@@ -31,6 +31,14 @@ func Build(repo *data.Repo) (graphql.Schema, error) {
 	})
 	booleanFilterFields["equals"] = &graphql.InputObjectFieldConfig{Type: graphql.Boolean}
 
+	dateTimeNullableFilterFields := graphql.InputObjectConfigFieldMap{}
+	dateTimeNullableFilter := graphql.NewInputObject(graphql.InputObjectConfig{
+		Name:   "DateTimeNullableFilter",
+		Fields: dateTimeNullableFilterFields,
+	})
+	dateTimeNullableFilterFields["equals"] = &graphql.InputObjectFieldConfig{Type: dateTimeScalar}
+	dateTimeNullableFilterFields["not"] = &graphql.InputObjectFieldConfig{Type: dateTimeNullableFilter}
+
 	sectionWhereInputType := graphql.NewInputObject(graphql.InputObjectConfig{
 		Name: "SectionWhereInput",
 		Fields: graphql.InputObjectConfigFieldMap{
@@ -90,9 +98,10 @@ func Build(repo *data.Repo) (graphql.Schema, error) {
 	externalWhereInputType := graphql.NewInputObject(graphql.InputObjectConfig{
 		Name: "ExternalWhereInput",
 		Fields: graphql.InputObjectConfigFieldMap{
-			"slug":    &graphql.InputObjectFieldConfig{Type: stringFilterInput},
-			"state":   &graphql.InputObjectFieldConfig{Type: stringFilterInput},
-			"partner": &graphql.InputObjectFieldConfig{Type: partnerWhereInputType},
+			"slug":          &graphql.InputObjectFieldConfig{Type: stringFilterInput},
+			"state":         &graphql.InputObjectFieldConfig{Type: stringFilterInput},
+			"partner":       &graphql.InputObjectFieldConfig{Type: partnerWhereInputType},
+			"publishedDate": &graphql.InputObjectFieldConfig{Type: dateTimeNullableFilter},
 		},
 	})
 

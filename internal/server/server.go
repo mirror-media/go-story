@@ -134,7 +134,9 @@ func runProbeTests(target string) []ProbeResult {
 					"take":    3,
 					"skip":    0,
 					"orderBy": []map[string]string{{"publishedDate": "desc"}},
-					"filter":  map[string]any{},
+					"filter": map[string]any{
+						"state": map[string]any{"equals": "published"},
+					},
 				},
 			},
 		},
@@ -159,7 +161,10 @@ func runProbeTests(target string) []ProbeResult {
 					"take":    3,
 					"skip":    0,
 					"orderBy": []map[string]string{{"publishedDate": "desc"}},
-					"filter":  map[string]any{},
+					"filter": map[string]any{
+						"state":         map[string]any{"equals": "published"},
+						"publishedDate": map[string]any{"not": map[string]any{"equals": nil}},
+					},
 				},
 			},
 		},

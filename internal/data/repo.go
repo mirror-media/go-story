@@ -181,6 +181,11 @@ type PartnerWhereInput struct {
 	Slug *StringFilter `mapstructure:"slug"`
 }
 
+type DateTimeNullableFilter struct {
+	Equals *string                 `mapstructure:"equals"`
+	Not    *DateTimeNullableFilter `mapstructure:"not"`
+}
+
 type PostWhereInput struct {
 	Slug       *StringFilter               `mapstructure:"slug"`
 	Sections   *SectionManyRelationFilter  `mapstructure:"sections"`
@@ -196,9 +201,10 @@ type PostWhereUniqueInput struct {
 }
 
 type ExternalWhereInput struct {
-	Slug    *StringFilter      `mapstructure:"slug"`
-	State   *StringFilter      `mapstructure:"state"`
-	Partner *PartnerWhereInput `mapstructure:"partner"`
+	Slug          *StringFilter           `mapstructure:"slug"`
+	State         *StringFilter           `mapstructure:"state"`
+	Partner       *PartnerWhereInput      `mapstructure:"partner"`
+	PublishedDate *DateTimeNullableFilter `mapstructure:"publishedDate"`
 }
 
 type OrderRule struct {
@@ -647,6 +653,22 @@ func (r *Repo) QueryExternals(ctx context.Context, where *ExternalWhereInput, or
 	if where != nil {
 		buildStringFilter("e.slug", where.Slug)
 		buildStringFilter("e.state", where.State)
+		if where.PublishedDate != nil {
+			if where.PublishedDate.Equals != nil {
+				conds = append(conds, fmt.Sprintf(`e."publishedDate" = $%d`, argIdx))
+				args = append(args, *where.PublishedDate.Equals)
+				argIdx++
+			}
+			if where.PublishedDate.Not != nil {
+				if where.PublishedDate.Not.Equals == nil {
+					conds = append(conds, `e."publishedDate" IS NOT NULL`)
+				} else {
+					conds = append(conds, fmt.Sprintf(`e."publishedDate" <> $%d`, argIdx))
+					args = append(args, *where.PublishedDate.Not.Equals)
+					argIdx++
+				}
+			}
+		}
 		if where.Partner != nil && where.Partner.Slug != nil && where.Partner.Slug.Equals != nil {
 			sb.WriteString(` JOIN "Partner" p ON p.id = e.partner`)
 			conds = append(conds, fmt.Sprintf(`p.slug = $%d`, argIdx))
