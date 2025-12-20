@@ -11,7 +11,7 @@
 
 ## 主要端點
 - `POST /api/graphql`：GraphQL 端點
-- `POST /probe`：接受 payload `{"url": "<target gql url>"}`，對目標 GQL 執行內建測試查詢（posts list、post by slug、externals list、external by slug），回傳各測試的 status 與 body。
+- `POST /probe`：接受 payload `{"url": "<target gql url>"}`，會同時對「目標 GQL」與「目前這個 server 的 /api/graphql」跑內建測試（posts list、post by slug、externals list、external by slug），只回傳是否一致與各自 status/error，不回傳目標 GQL 的資料內容。
 - `GET /`：簡易說明
 
 ## 專案結構

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"time"
 
 	"github.com/graphql-go/graphql"
@@ -62,14 +63,53 @@ func ProbeHandler(w http.ResponseWriter, r *http.Request) {
 		URL string `json:"url"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil || payload.URL == "" {
-		http.Error(w, "invalid payload, need {\"url\": \"https://your-gql\"}", http.StatusBadRequest)
+		http.Error(w, "invalid payload, need {\"url\": \"https://original-gql\"}", http.StatusBadRequest)
 		return
 	}
 
-	results := runProbeTests(payload.URL)
+	scheme := r.Header.Get("X-Forwarded-Proto")
+	if scheme == "" {
+		scheme = "http"
+	}
+	selfURL := fmt.Sprintf("%s://%s/api/graphql", scheme, r.Host)
+
+	targetResults := runProbeTests(payload.URL)
+	selfResults := runProbeTests(selfURL)
+
+	selfMap := map[string]ProbeResult{}
+	for _, r := range selfResults {
+		selfMap[r.Name] = r
+	}
+
+	type compare struct {
+		Name         string `json:"name"`
+		Match        bool   `json:"match"`
+		TargetStatus int    `json:"targetStatus"`
+		SelfStatus   int    `json:"selfStatus"`
+		TargetError  string `json:"targetError,omitempty"`
+		SelfError    string `json:"selfError,omitempty"`
+		Note         string `json:"note,omitempty"`
+	}
+
+	results := []compare{}
+	for _, tr := range targetResults {
+		sr := selfMap[tr.Name]
+		match, note := compareBodies(tr, sr)
+		results = append(results, compare{
+			Name:         tr.Name,
+			Match:        match,
+			TargetStatus: tr.StatusCode,
+			SelfStatus:   sr.StatusCode,
+			TargetError:  tr.Error,
+			SelfError:    sr.Error,
+			Note:         note,
+		})
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"target":  payload.URL,
+		"self":    selfURL,
 		"results": results,
 	})
 }
@@ -169,4 +209,37 @@ func runProbeTests(target string) []ProbeResult {
 		results = append(results, res)
 	}
 	return results
+}
+
+func compareBodies(target ProbeResult, self ProbeResult) (bool, string) {
+	// If either has transport error
+	if target.Error != "" || self.Error != "" {
+		return target.Error == "" && self.Error == "", "transport error"
+	}
+	if target.StatusCode != self.StatusCode {
+		return false, "status code differ"
+	}
+
+	tObj, tErr := normalizeJSON(target.Body)
+	sObj, sErr := normalizeJSON(self.Body)
+	if tErr == nil && sErr == nil {
+		if reflect.DeepEqual(tObj, sObj) {
+			return true, ""
+		}
+		return false, "body JSON differ"
+	}
+
+	// fallback raw compare
+	if bytes.Equal(target.Body, self.Body) {
+		return true, ""
+	}
+	return false, "body differ"
+}
+
+func normalizeJSON(raw []byte) (interface{}, error) {
+	var v interface{}
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return nil, err
+	}
+	return v, nil
 }
