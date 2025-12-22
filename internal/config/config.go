@@ -91,11 +91,11 @@ func Load() (Config, error) {
 // encodeDatabaseURL 自動處理 DATABASE_URL 的編碼
 // 如果 URL 中的密碼包含特殊字符但未編碼，會自動進行 URL 編碼
 func encodeDatabaseURL(rawURL string) (string, error) {
-	// 解析 URL
+	// 先嘗試用 url.Parse 解析
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
-		// 如果解析失敗，返回原值（讓後續的 pgx.ParseConfig 來處理錯誤）
-		return rawURL, nil
+		// 如果解析失敗，可能是因為密碼包含特殊字符，手動解析
+		return encodeDatabaseURLManual(rawURL)
 	}
 
 	// 檢查是否需要編碼密碼部分
@@ -137,4 +137,69 @@ func encodeDatabaseURL(rawURL string) (string, error) {
 
 	// 不需要編碼，返回原值
 	return rawURL, nil
+}
+
+// encodeDatabaseURLManual 手動解析並編碼 DATABASE_URL
+// 當 url.Parse 失敗時使用（通常是因為密碼包含特殊字符）
+func encodeDatabaseURLManual(rawURL string) (string, error) {
+	// 格式：postgres://user:password@host:port/database?params
+	// 或：postgresql://user:password@host:port/database?params
+
+	// 找到協議部分
+	schemeEnd := strings.Index(rawURL, "://")
+	if schemeEnd == -1 {
+		return rawURL, nil
+	}
+	scheme := rawURL[:schemeEnd]
+	rest := rawURL[schemeEnd+3:]
+
+	// 找到 @ 符號，分隔 userinfo 和 host
+	atIndex := strings.LastIndex(rest, "@")
+	if atIndex == -1 {
+		// 沒有 userinfo，返回原值
+		return rawURL, nil
+	}
+
+	userinfo := rest[:atIndex]
+	hostAndPath := rest[atIndex+1:]
+
+	// 解析 userinfo：user:password
+	colonIndex := strings.Index(userinfo, ":")
+	if colonIndex == -1 {
+		// 沒有密碼，返回原值
+		return rawURL, nil
+	}
+
+	username := userinfo[:colonIndex]
+	password := userinfo[colonIndex+1:]
+
+	// 檢查密碼是否已經編碼
+	decodedPassword, decodeErr := url.QueryUnescape(password)
+	if decodeErr == nil && decodedPassword != password {
+		// 已經編碼過，不需要再處理
+		return rawURL, nil
+	}
+
+	// 檢查是否需要編碼
+	needsEncoding := false
+	for _, r := range password {
+		if r < 32 || r > 126 || r == '@' || r == ':' || r == '/' || r == '?' || r == '#' || r == '[' || r == ']' {
+			needsEncoding = true
+			break
+		}
+	}
+
+	if !needsEncoding {
+		// 不需要編碼，返回原值
+		return rawURL, nil
+	}
+
+	// 對密碼進行 URL 編碼
+	encodedPassword := url.QueryEscape(password)
+	// QueryEscape 會把空格變成 +，但 PostgreSQL URL 需要 %20
+	encodedPassword = strings.ReplaceAll(encodedPassword, "+", "%20")
+
+	// 重新構建 URL
+	encodedURL := fmt.Sprintf("%s://%s:%s@%s", scheme, username, encodedPassword, hostAndPath)
+	return encodedURL, nil
 }
