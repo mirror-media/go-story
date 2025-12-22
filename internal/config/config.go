@@ -2,8 +2,10 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 )
 
 // Config holds runtime configuration from environment.
@@ -43,6 +45,14 @@ func Load() (Config, error) {
 	if cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL not set")
 	}
+
+	// 自動處理 DATABASE_URL 的編碼
+	encodedURL, err := encodeDatabaseURL(cfg.DatabaseURL)
+	if err != nil {
+		return Config{}, fmt.Errorf("failed to encode DATABASE_URL: %w", err)
+	}
+	cfg.DatabaseURL = encodedURL
+
 	if cfg.StaticsHost == "" {
 		return Config{}, fmt.Errorf("STATICS_HOST not set")
 	}
@@ -76,4 +86,55 @@ func Load() (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// encodeDatabaseURL 自動處理 DATABASE_URL 的編碼
+// 如果 URL 中的密碼包含特殊字符但未編碼，會自動進行 URL 編碼
+func encodeDatabaseURL(rawURL string) (string, error) {
+	// 解析 URL
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		// 如果解析失敗，返回原值（讓後續的 pgx.ParseConfig 來處理錯誤）
+		return rawURL, nil
+	}
+
+	// 檢查是否需要編碼密碼部分
+	if parsed.User != nil {
+		password, hasPassword := parsed.User.Password()
+		if hasPassword && password != "" {
+			// 嘗試解碼，如果解碼後與原值不同，表示已經編碼過
+			decodedPassword, decodeErr := url.QueryUnescape(password)
+			if decodeErr == nil && decodedPassword != password {
+				// 已經編碼過，不需要再處理
+				return rawURL, nil
+			}
+
+			// 檢查是否有需要編碼的特殊字符（URL 中不允許的字符）
+			needsEncoding := false
+			for _, r := range password {
+				// 檢查是否為需要編碼的字符
+				if r < 32 || r > 126 || r == '@' || r == ':' || r == '/' || r == '?' || r == '#' || r == '[' || r == ']' {
+					needsEncoding = true
+					break
+				}
+			}
+
+			if needsEncoding {
+				// 對密碼進行 URL 編碼
+				encodedPassword := url.QueryEscape(password)
+				// QueryEscape 會把空格變成 +，但 PostgreSQL URL 需要 %20
+				encodedPassword = strings.ReplaceAll(encodedPassword, "+", "%20")
+
+				// 重新構建 UserInfo
+				userInfo := url.UserPassword(parsed.User.Username(), encodedPassword)
+				parsed.User = userInfo
+
+				// 返回編碼後的完整 URL
+				return parsed.String(), nil
+			}
+		}
+	}
+
+	// 不需要編碼，返回原值
+	return rawURL, nil
 }

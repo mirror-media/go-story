@@ -4,7 +4,7 @@
 
 ## 環境需求
 - **必填**
-  - `DATABASE_URL`：Postgres 連線字串
+  - `DATABASE_URL`：Postgres 連線字串（密碼中的特殊字符會自動進行 URL 編碼，無需手動編碼）
   - `STATICS_HOST`：靜態圖片 host，例如 `https://v3-statics-dev.mirrormedia.mg/images`
 - **選填**
   - `PORT`：服務監聽埠，預設 `8080`
