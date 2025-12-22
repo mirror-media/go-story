@@ -14,6 +14,8 @@ type Config struct {
 	StaticsHost string
 	// PORT: 服務監聽埠，未設定時預設 8080 (選填)
 	Port string
+	// GO_ENV: 執行環境 (dev/staging/prod)，預設為 dev (選填)
+	GoEnv string
 	// REDIS_ENABLED: 是否啟用 Redis cache，預設為 false (選填)
 	RedisEnabled bool
 	// REDIS_URL: Redis 連線字串，例如 redis://localhost:6379/0 (選填，當 REDIS_ENABLED=true 時建議設定)
@@ -25,6 +27,7 @@ type Config struct {
 // Load reads required environment variables.
 // DATABASE_URL and STATICS_HOST are mandatory.
 // PORT is optional; defaults to "8080".
+// GO_ENV is optional; defaults to "dev".
 // REDIS_ENABLED is optional; defaults to false.
 // REDIS_URL is optional; required if REDIS_ENABLED=true.
 // REDIS_TTL is optional; defaults to 3600 seconds.
@@ -33,6 +36,7 @@ func Load() (Config, error) {
 		DatabaseURL: os.Getenv("DATABASE_URL"),
 		StaticsHost: os.Getenv("STATICS_HOST"),
 		Port:        os.Getenv("PORT"),
+		GoEnv:       os.Getenv("GO_ENV"),
 		RedisURL:    os.Getenv("REDIS_URL"),
 	}
 
@@ -44,6 +48,9 @@ func Load() (Config, error) {
 	}
 	if cfg.Port == "" {
 		cfg.Port = "8080"
+	}
+	if cfg.GoEnv == "" {
+		cfg.GoEnv = "dev"
 	}
 
 	// 解析 REDIS_ENABLED，預設為 false

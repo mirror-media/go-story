@@ -8,6 +8,7 @@
   - `STATICS_HOST`：靜態圖片 host，例如 `https://v3-statics-dev.mirrormedia.mg/images`
 - **選填**
   - `PORT`：服務監聽埠，預設 `8080`
+  - `GO_ENV`：執行環境 (`dev`/`staging`/`prod`)，預設 `dev`。`prod` 環境會關閉資訊類日誌輸出
   - `REDIS_ENABLED`：是否啟用 Redis cache，預設 `false`
   - `REDIS_URL`：Redis 連線字串，例如 `redis://localhost:6379/0`（當 `REDIS_ENABLED=true` 時建議設定）
   - `REDIS_TTL`：Cache TTL（秒），預設 `3600`（1 小時）
@@ -32,6 +33,9 @@ export DATABASE_URL="postgres://user:pass@host/db?sslmode=disable"
 export STATICS_HOST="https://v3-statics-dev.mirrormedia.mg/images"
 export PORT=8080
 
+# 可選：設定執行環境（dev/staging/prod，預設 dev）
+export GO_ENV=dev
+
 # 可選：啟用 Redis cache
 export REDIS_ENABLED=true
 export REDIS_URL="redis://localhost:6379/0"
@@ -55,6 +59,7 @@ docker build -t go-story:local .
 docker run --rm -p 8080:8080 \
   -e DATABASE_URL="postgres://user:pass@host/db?sslmode=disable" \
   -e STATICS_HOST="https://v3-statics-dev.mirrormedia.mg/images" \
+  -e GO_ENV=prod \
   -e REDIS_ENABLED=true \
   -e REDIS_URL="redis://redis-host:6379/0" \
   -e REDIS_TTL=3600 \

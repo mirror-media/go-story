@@ -23,16 +23,20 @@ func main() {
 	defer db.Close()
 
 	// 初始化 Redis cache
-	cache, err := data.NewCache(cfg.RedisURL, cfg.RedisEnabled, cfg.RedisTTL)
+	cache, err := data.NewCache(cfg.RedisURL, cfg.RedisEnabled, cfg.RedisTTL, cfg.GoEnv)
 	if err != nil {
 		log.Printf("warning: failed to initialize cache: %v", err)
 	}
 	defer cache.Close()
 
 	if cache.Enabled() {
-		log.Printf("Redis cache enabled (TTL: %d seconds)", cfg.RedisTTL)
+		if cfg.GoEnv != "prod" {
+			log.Printf("Redis cache enabled (TTL: %d seconds)", cfg.RedisTTL)
+		}
 	} else {
-		log.Printf("Redis cache disabled")
+		if cfg.GoEnv != "prod" {
+			log.Printf("Redis cache disabled")
+		}
 	}
 
 	repo := data.NewRepo(db, cfg.StaticsHost, cache)
