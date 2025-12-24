@@ -1061,6 +1061,16 @@ func (r *Repo) QueryTopics(ctx context.Context, where *TopicWhereInput, orders [
 			briefRaw    []byte
 			createdAt   sql.NullTime
 			updatedAt   sql.NullTime
+			heroURL     sql.NullString
+			leading     sql.NullString
+			ogTitle     sql.NullString
+			ogDesc      sql.NullString
+			titleStyle  sql.NullString
+			typeVal     sql.NullString
+			styleVal    sql.NullString
+			javascript  sql.NullString
+			dfp         sql.NullString
+			mobileDfp   sql.NullString
 		)
 		if err := rows.Scan(
 			&dbID,
@@ -1070,22 +1080,52 @@ func (r *Repo) QueryTopics(ctx context.Context, where *TopicWhereInput, orders [
 			&t.State,
 			&briefRaw,
 			&heroImageID,
-			&t.HeroURL,
-			&t.Leading,
-			&t.OgTitle,
-			&t.OgDescription,
+			&heroURL,
+			&leading,
+			&ogTitle,
+			&ogDesc,
 			&ogImageID,
 			&t.IsFeatured,
-			&t.TitleStyle,
-			&t.Type,
-			&t.Style,
-			&t.Javascript,
-			&t.Dfp,
-			&t.MobileDfp,
+			&titleStyle,
+			&typeVal,
+			&styleVal,
+			&javascript,
+			&dfp,
+			&mobileDfp,
 			&createdAt,
 			&updatedAt,
 		); err != nil {
 			return nil, err
+		}
+		if heroURL.Valid {
+			t.HeroURL = heroURL.String
+		}
+		if leading.Valid {
+			t.Leading = leading.String
+		}
+		if ogTitle.Valid {
+			t.OgTitle = ogTitle.String
+		}
+		if ogDesc.Valid {
+			t.OgDescription = ogDesc.String
+		}
+		if titleStyle.Valid {
+			t.TitleStyle = titleStyle.String
+		}
+		if typeVal.Valid {
+			t.Type = typeVal.String
+		}
+		if styleVal.Valid {
+			t.Style = styleVal.String
+		}
+		if javascript.Valid {
+			t.Javascript = javascript.String
+		}
+		if dfp.Valid {
+			t.Dfp = dfp.String
+		}
+		if mobileDfp.Valid {
+			t.MobileDfp = mobileDfp.String
 		}
 		t.ID = strconv.Itoa(dbID)
 		if sortOrder.Valid {
@@ -1239,6 +1279,16 @@ func (r *Repo) QueryTopicByUnique(ctx context.Context, where *TopicWhereUniqueIn
 		briefRaw    []byte
 		createdAt   sql.NullTime
 		updatedAt   sql.NullTime
+		heroURL     sql.NullString
+		leading     sql.NullString
+		ogTitle     sql.NullString
+		ogDesc      sql.NullString
+		titleStyle  sql.NullString
+		typeVal     sql.NullString
+		styleVal    sql.NullString
+		javascript  sql.NullString
+		dfp         sql.NullString
+		mobileDfp   sql.NullString
 	)
 
 	err := r.db.QueryRowContext(ctx, sb.String(), args...).Scan(
@@ -1249,18 +1299,18 @@ func (r *Repo) QueryTopicByUnique(ctx context.Context, where *TopicWhereUniqueIn
 		&t.State,
 		&briefRaw,
 		&heroImageID,
-		&t.HeroURL,
-		&t.Leading,
-		&t.OgTitle,
-		&t.OgDescription,
+		&heroURL,
+		&leading,
+		&ogTitle,
+		&ogDesc,
 		&ogImageID,
 		&t.IsFeatured,
-		&t.TitleStyle,
-		&t.Type,
-		&t.Style,
-		&t.Javascript,
-		&t.Dfp,
-		&t.MobileDfp,
+		&titleStyle,
+		&typeVal,
+		&styleVal,
+		&javascript,
+		&dfp,
+		&mobileDfp,
 		&createdAt,
 		&updatedAt,
 	)
@@ -1282,6 +1332,36 @@ func (r *Repo) QueryTopicByUnique(ctx context.Context, where *TopicWhereUniqueIn
 		t.UpdatedAt = updatedAt.Time.UTC().Format(timeLayoutMilli)
 	}
 	t.Brief = decodeJSONBytes(briefRaw)
+	if heroURL.Valid {
+		t.HeroURL = heroURL.String
+	}
+	if leading.Valid {
+		t.Leading = leading.String
+	}
+	if ogTitle.Valid {
+		t.OgTitle = ogTitle.String
+	}
+	if ogDesc.Valid {
+		t.OgDescription = ogDesc.String
+	}
+	if titleStyle.Valid {
+		t.TitleStyle = titleStyle.String
+	}
+	if typeVal.Valid {
+		t.Type = typeVal.String
+	}
+	if styleVal.Valid {
+		t.Style = styleVal.String
+	}
+	if javascript.Valid {
+		t.Javascript = javascript.String
+	}
+	if dfp.Valid {
+		t.Dfp = dfp.String
+	}
+	if mobileDfp.Valid {
+		t.MobileDfp = mobileDfp.String
+	}
 	t.Metadata = map[string]any{
 		"heroImageID": nullableInt(heroImageID),
 		"ogImageID":   nullableInt(ogImageID),
