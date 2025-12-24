@@ -990,7 +990,7 @@ func (r *Repo) QueryTopics(ctx context.Context, where *TopicWhereInput, orders [
 	}
 
 	sb := strings.Builder{}
-	sb.WriteString(`SELECT id, name, slug, "sortOrder", state, brief, "heroImage", "heroUrl", leading, "og_title", "og_description", "og_image", "isFeatured", "title_style", type, style, javascript, dfp, "mobile_dfp", "createdAt", "updatedAt" FROM "Topic" t`)
+	sb.WriteString(`SELECT id, name, slug, "sortOrder", state, brief, "heroImage", "heroUrl", "leading", "og_title", "og_description", "og_image", "isFeatured", "title_style", type, style, javascript, dfp, "mobile_dfp", "createdAt", "updatedAt" FROM "Topic" t`)
 
 	conds := []string{}
 	args := []interface{}{}
@@ -1210,7 +1210,7 @@ func (r *Repo) QueryTopicByUnique(ctx context.Context, where *TopicWhereUniqueIn
 	}
 
 	sb := strings.Builder{}
-	sb.WriteString(`SELECT id, name, slug, "sortOrder", state, brief, "heroImage", "heroUrl", leading, "og_title", "og_description", "og_image", "isFeatured", "title_style", type, style, javascript, dfp, "mobile_dfp", "createdAt", "updatedAt" FROM "Topic" t WHERE `)
+	sb.WriteString(`SELECT id, name, slug, "sortOrder", state, brief, "heroImage", "heroUrl", "leading", "og_title", "og_description", "og_image", "isFeatured", "title_style", type, style, javascript, dfp, "mobile_dfp", "createdAt", "updatedAt" FROM "Topic" t WHERE `)
 	args := []interface{}{}
 	argIdx := 1
 	if where.ID != nil {

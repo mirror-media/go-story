@@ -85,6 +85,18 @@ func Build(repo *data.Repo) (graphql.Schema, error) {
 			"state":      &graphql.InputObjectFieldConfig{Type: stringFilterInput},
 			"isAdult":    &graphql.InputObjectFieldConfig{Type: booleanFilterInput},
 			"isMember":   &graphql.InputObjectFieldConfig{Type: booleanFilterInput},
+			"isFeatured": &graphql.InputObjectFieldConfig{Type: booleanFilterInput},
+			"topics": &graphql.InputObjectFieldConfig{Type: graphql.NewInputObject(graphql.InputObjectConfig{
+				Name: "PostTopicsWhereInput",
+				Fields: graphql.InputObjectConfigFieldMap{
+					"id": &graphql.InputObjectFieldConfig{Type: graphql.NewInputObject(graphql.InputObjectConfig{
+						Name: "IDFilter",
+						Fields: graphql.InputObjectConfigFieldMap{
+							"equals": &graphql.InputObjectFieldConfig{Type: graphql.ID},
+						},
+					})},
+				},
+			})},
 		},
 	})
 
