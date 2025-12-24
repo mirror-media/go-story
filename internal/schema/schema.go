@@ -172,8 +172,15 @@ func Build(repo *data.Repo) (graphql.Schema, error) {
 	})
 
 	photoWhereInputType := graphql.NewInputObject(graphql.InputObjectConfig{
-		Name:   "PhotoWhereInput",
-		Fields: graphql.InputObjectConfigFieldMap{},
+		Name: "PhotoWhereInput",
+		Fields: graphql.InputObjectConfigFieldMap{
+			// PhotoWhereInput 目前沒有實作具體的過濾邏輯
+			// 添加一個 placeholder 欄位以滿足 GraphQL 的要求（InputObject 必須至少有一個欄位）
+			"_placeholder": &graphql.InputObjectFieldConfig{
+				Type:        graphql.Boolean,
+				Description: "Placeholder field (PhotoWhereInput filtering not implemented yet)",
+			},
+		},
 	})
 
 	// Object types
