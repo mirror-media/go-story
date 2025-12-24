@@ -3,6 +3,7 @@ package schema
 import (
 	"fmt"
 	"go-story/internal/data"
+	"strconv"
 
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/language/ast"
@@ -130,6 +131,51 @@ func Build(repo *data.Repo) (graphql.Schema, error) {
 		},
 	})
 
+	topicWhereInputType := graphql.NewInputObject(graphql.InputObjectConfig{
+		Name: "TopicWhereInput",
+		Fields: graphql.InputObjectConfigFieldMap{
+			"slug":       &graphql.InputObjectFieldConfig{Type: stringFilterInput},
+			"name":       &graphql.InputObjectFieldConfig{Type: stringFilterInput},
+			"state":      &graphql.InputObjectFieldConfig{Type: stringFilterInput},
+			"isFeatured": &graphql.InputObjectFieldConfig{Type: booleanFilterInput},
+			"type":       &graphql.InputObjectFieldConfig{Type: stringFilterInput},
+			"style":      &graphql.InputObjectFieldConfig{Type: stringFilterInput},
+		},
+	})
+
+	topicWhereUniqueInputType := graphql.NewInputObject(graphql.InputObjectConfig{
+		Name: "TopicWhereUniqueInput",
+		Fields: graphql.InputObjectConfigFieldMap{
+			"id":   &graphql.InputObjectFieldConfig{Type: graphql.ID},
+			"name": &graphql.InputObjectFieldConfig{Type: graphql.String},
+			"slug": &graphql.InputObjectFieldConfig{Type: graphql.String},
+		},
+	})
+
+	topicOrderByInput := graphql.NewInputObject(graphql.InputObjectConfig{
+		Name: "TopicOrderByInput",
+		Fields: graphql.InputObjectConfigFieldMap{
+			"sortOrder": &graphql.InputObjectFieldConfig{Type: orderDirectionEnum},
+			"createdAt": &graphql.InputObjectFieldConfig{Type: orderDirectionEnum},
+			"updatedAt": &graphql.InputObjectFieldConfig{Type: orderDirectionEnum},
+			"name":      &graphql.InputObjectFieldConfig{Type: orderDirectionEnum},
+			"slug":      &graphql.InputObjectFieldConfig{Type: orderDirectionEnum},
+		},
+	})
+
+	tagWhereInputType := graphql.NewInputObject(graphql.InputObjectConfig{
+		Name: "TagWhereInput",
+		Fields: graphql.InputObjectConfigFieldMap{
+			"slug": &graphql.InputObjectFieldConfig{Type: stringFilterInput},
+			"name": &graphql.InputObjectFieldConfig{Type: stringFilterInput},
+		},
+	})
+
+	photoWhereInputType := graphql.NewInputObject(graphql.InputObjectConfig{
+		Name:   "PhotoWhereInput",
+		Fields: graphql.InputObjectConfigFieldMap{},
+	})
+
 	// Object types
 	imageFileType := graphql.NewObject(graphql.ObjectConfig{
 		Name: "ImageFile",
@@ -239,14 +285,180 @@ func Build(repo *data.Repo) (graphql.Schema, error) {
 		},
 	})
 
-	topicType := graphql.NewObject(graphql.ObjectConfig{
+	var postType *graphql.Object
+	var topicType *graphql.Object
+	topicType = graphql.NewObject(graphql.ObjectConfig{
 		Name: "Topic",
-		Fields: graphql.Fields{
-			"slug": &graphql.Field{Type: graphql.String},
-		},
+		Fields: graphql.FieldsThunk(func() graphql.Fields {
+			return graphql.Fields{
+				"id":        &graphql.Field{Type: graphql.ID},
+				"name":      &graphql.Field{Type: graphql.String},
+				"slug":      &graphql.Field{Type: graphql.String},
+				"sortOrder": &graphql.Field{Type: graphql.Int},
+				"state":     &graphql.Field{Type: graphql.String},
+				"brief":     &graphql.Field{Type: jsonScalar},
+				"heroImage": &graphql.Field{
+					Type: photoType,
+					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+						return normalizeTopic(p.Source).HeroImage, nil
+					},
+				},
+				"heroUrl":        &graphql.Field{Type: graphql.String},
+				"leading":        &graphql.Field{Type: graphql.String},
+				"og_title":       &graphql.Field{Type: graphql.String},
+				"og_description": &graphql.Field{Type: graphql.String},
+				"og_image": &graphql.Field{
+					Type: photoType,
+					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+						return normalizeTopic(p.Source).OgImage, nil
+					},
+				},
+				"isFeatured":  &graphql.Field{Type: graphql.Boolean},
+				"title_style": &graphql.Field{Type: graphql.String},
+				"type":        &graphql.Field{Type: graphql.String},
+				"style":       &graphql.Field{Type: graphql.String},
+				"javascript":  &graphql.Field{Type: graphql.String},
+				"dfp":         &graphql.Field{Type: graphql.String},
+				"mobile_dfp":  &graphql.Field{Type: graphql.String},
+				"createdAt":   &graphql.Field{Type: dateTimeScalar},
+				"updatedAt":   &graphql.Field{Type: dateTimeScalar},
+				"tags": &graphql.Field{
+					Type: graphql.NewList(tagType),
+					Args: graphql.FieldConfigArgument{
+						"where": &graphql.ArgumentConfig{Type: tagWhereInputType},
+					},
+					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+						current := normalizeTopic(p.Source)
+						where, err := data.DecodeTagWhere(p.Args["where"])
+						if err != nil {
+							return nil, err
+						}
+						return filterTags(current.Tags, where), nil
+					},
+				},
+				"tagsCount": &graphql.Field{
+					Type: graphql.Int,
+					Args: graphql.FieldConfigArgument{
+						"where": &graphql.ArgumentConfig{Type: tagWhereInputType},
+					},
+					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+						current := normalizeTopic(p.Source)
+						where, err := data.DecodeTagWhere(p.Args["where"])
+						if err != nil {
+							return nil, err
+						}
+						return len(filterTags(current.Tags, where)), nil
+					},
+				},
+				"slideshow_images": &graphql.Field{
+					Type: graphql.NewList(photoType),
+					Args: graphql.FieldConfigArgument{
+						"where": &graphql.ArgumentConfig{Type: photoWhereInputType},
+					},
+					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+						current := normalizeTopic(p.Source)
+						where, err := data.DecodePhotoWhere(p.Args["where"])
+						if err != nil {
+							return nil, err
+						}
+						return filterPhotos(current.SlideshowImages, where), nil
+					},
+				},
+				"slideshow_imagesInInputOrder": &graphql.Field{
+					Type: graphql.NewList(photoType),
+					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+						return normalizeTopic(p.Source).SlideshowImagesInOrder, nil
+					},
+				},
+				"manualOrderOfSlideshowImages": &graphql.Field{Type: jsonScalar},
+				"posts": &graphql.Field{
+					Type: graphql.NewList(postType),
+					Args: graphql.FieldConfigArgument{
+						"where":   &graphql.ArgumentConfig{Type: postWhereInputType},
+						"orderBy": &graphql.ArgumentConfig{Type: graphql.NewList(postOrderByInput)},
+						"take":    &graphql.ArgumentConfig{Type: graphql.Int},
+						"skip":    &graphql.ArgumentConfig{Type: graphql.Int},
+					},
+					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+						current := normalizeTopic(p.Source)
+						where, err := data.DecodePostWhere(p.Args["where"])
+						if err != nil {
+							return nil, err
+						}
+						orders := parseOrderRules(p.Args["orderBy"])
+						take, skip := parsePagination(p.Args)
+						return filterAndPaginatePosts(current.Posts, where, orders, take, skip), nil
+					},
+				},
+				"postsCount": &graphql.Field{
+					Type: graphql.Int,
+					Args: graphql.FieldConfigArgument{
+						"where": &graphql.ArgumentConfig{Type: postWhereInputType},
+					},
+					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+						current := normalizeTopic(p.Source)
+						where, err := data.DecodePostWhere(p.Args["where"])
+						if err != nil {
+							return nil, err
+						}
+						// 如果 topic 已經有 posts，直接過濾計算
+						if len(current.Posts) > 0 {
+							return len(filterPosts(current.Posts, where)), nil
+						}
+						// 否則需要從資料庫查詢
+						topicID, _ := strconv.Atoi(current.ID)
+						if topicID == 0 {
+							return 0, nil
+						}
+						postWhere := &data.PostWhereInput{
+							Topics: &data.PostTopicsWhereInput{
+								ID: &data.IDFilter{Equals: &current.ID},
+							},
+						}
+						if where != nil {
+							// 合併 where 條件
+							postWhere.State = where.State
+							postWhere.IsFeatured = where.IsFeatured
+							postWhere.IsMember = where.IsMember
+							postWhere.IsAdult = where.IsAdult
+						}
+						return repo.QueryPostsCount(p.Context, postWhere)
+					},
+				},
+				"featuredPostsCount": &graphql.Field{
+					Type: graphql.Int,
+					Args: graphql.FieldConfigArgument{
+						"where": &graphql.ArgumentConfig{Type: postWhereInputType},
+					},
+					Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+						current := normalizeTopic(p.Source)
+						where, err := data.DecodePostWhere(p.Args["where"])
+						if err != nil {
+							return nil, err
+						}
+						// 創建一個包含 isFeatured 的 where
+						featuredWhere := &data.PostWhereInput{
+							IsFeatured: &data.BooleanFilter{Equals: boolPtr(true)},
+						}
+						if where != nil {
+							featuredWhere.State = where.State
+							featuredWhere.IsMember = where.IsMember
+							featuredWhere.IsAdult = where.IsAdult
+						}
+						topicID, _ := strconv.Atoi(current.ID)
+						if topicID == 0 {
+							return 0, nil
+						}
+						featuredWhere.Topics = &data.PostTopicsWhereInput{
+							ID: &data.IDFilter{Equals: &current.ID},
+						}
+						return repo.QueryPostsCount(p.Context, featuredWhere)
+					},
+				},
+			}
+		}),
 	})
 
-	var postType *graphql.Object
 	postType = graphql.NewObject(graphql.ObjectConfig{
 		Name: "Post",
 		Fields: graphql.FieldsThunk(func() graphql.Fields {
@@ -543,6 +755,50 @@ func Build(repo *data.Repo) (graphql.Schema, error) {
 					return repo.QueryPostByUnique(p.Context, where)
 				},
 			},
+			"topics": &graphql.Field{
+				Type: graphql.NewList(topicType),
+				Args: graphql.FieldConfigArgument{
+					"take":    &graphql.ArgumentConfig{Type: graphql.Int},
+					"skip":    &graphql.ArgumentConfig{Type: graphql.Int},
+					"orderBy": &graphql.ArgumentConfig{Type: graphql.NewList(topicOrderByInput)},
+					"where":   &graphql.ArgumentConfig{Type: topicWhereInputType},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					where, err := data.DecodeTopicWhere(p.Args["where"])
+					if err != nil {
+						return nil, err
+					}
+					orders := parseOrderRules(p.Args["orderBy"])
+					take, skip := parsePagination(p.Args)
+					return repo.QueryTopics(p.Context, where, orders, take, skip)
+				},
+			},
+			"topicsCount": &graphql.Field{
+				Type: graphql.Int,
+				Args: graphql.FieldConfigArgument{
+					"where": &graphql.ArgumentConfig{Type: topicWhereInputType},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					where, err := data.DecodeTopicWhere(p.Args["where"])
+					if err != nil {
+						return nil, err
+					}
+					return repo.QueryTopicsCount(p.Context, where)
+				},
+			},
+			"topic": &graphql.Field{
+				Type: topicType,
+				Args: graphql.FieldConfigArgument{
+					"where": &graphql.ArgumentConfig{Type: topicWhereUniqueInputType},
+				},
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					where, err := data.DecodeTopicWhereUnique(p.Args["where"])
+					if err != nil {
+						return nil, err
+					}
+					return repo.QueryTopicByUnique(p.Context, where)
+				},
+			},
 			"externals": &graphql.Field{
 				Type: graphql.NewList(externalType),
 				Args: graphql.FieldConfigArgument{
@@ -755,6 +1011,66 @@ func filterCategories(items []data.Category, where *data.CategoryWhereInput) []d
 	return result
 }
 
+func filterTags(items []data.Tag, where *data.TagWhereInput) []data.Tag {
+	if where == nil {
+		return items
+	}
+	result := []data.Tag{}
+	for _, item := range items {
+		if !matchesStringFilter(item.Slug, where.Slug) {
+			continue
+		}
+		if !matchesStringFilter(item.Name, where.Name) {
+			continue
+		}
+		result = append(result, item)
+	}
+	return result
+}
+
+func filterPhotos(items []data.Photo, where *data.PhotoWhereInput) []data.Photo {
+	if where == nil {
+		return items
+	}
+	// PhotoWhereInput 目前沒有實作過濾邏輯，直接返回
+	return items
+}
+
+func filterPosts(items []data.Post, where *data.PostWhereInput) []data.Post {
+	if where == nil {
+		return items
+	}
+	result := []data.Post{}
+	for _, item := range items {
+		if !matchesStringFilter(item.State, where.State) {
+			continue
+		}
+		if !matchesBooleanFilter(item.IsFeatured, where.IsFeatured) {
+			continue
+		}
+		if !matchesBooleanFilter(item.IsMember, where.IsMember) {
+			continue
+		}
+		if !matchesBooleanFilter(item.IsAdult, where.IsAdult) {
+			continue
+		}
+		result = append(result, item)
+	}
+	return result
+}
+
+func filterAndPaginatePosts(items []data.Post, where *data.PostWhereInput, orders []data.OrderRule, take, skip int) []data.Post {
+	filtered := filterPosts(items, where)
+	// TODO: 實作排序和分頁
+	if skip > 0 && skip < len(filtered) {
+		filtered = filtered[skip:]
+	}
+	if take > 0 && take < len(filtered) {
+		filtered = filtered[:take]
+	}
+	return filtered
+}
+
 func matchesSectionWhere(s *data.Section, where *data.SectionWhereInput) bool {
 	if where == nil {
 		return true
@@ -831,4 +1147,22 @@ func normalizePost(src interface{}) data.Post {
 	default:
 		return data.Post{}
 	}
+}
+
+func normalizeTopic(src interface{}) data.Topic {
+	switch v := src.(type) {
+	case data.Topic:
+		return v
+	case *data.Topic:
+		if v == nil {
+			return data.Topic{}
+		}
+		return *v
+	default:
+		return data.Topic{}
+	}
+}
+
+func boolPtr(b bool) *bool {
+	return &b
 }

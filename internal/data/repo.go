@@ -64,6 +64,15 @@ type Tag struct {
 	Slug string `json:"slug"`
 }
 
+type TagWhereInput struct {
+	Slug *StringFilter `mapstructure:"slug"`
+	Name *StringFilter `mapstructure:"name"`
+}
+
+type PhotoWhereInput struct {
+	// 目前不需要實作具體的過濾邏輯
+}
+
 type Video struct {
 	ID        string `json:"id"`
 	VideoSrc  string `json:"videoSrc"`
@@ -80,7 +89,33 @@ type Partner struct {
 }
 
 type Topic struct {
-	Slug string `json:"slug"`
+	ID                           string         `json:"id"`
+	Name                         string         `json:"name"`
+	Slug                         string         `json:"slug"`
+	SortOrder                    *int           `json:"sortOrder"`
+	State                        string         `json:"state"`
+	Brief                        map[string]any `json:"brief"`
+	HeroImage                    *Photo         `json:"heroImage"`
+	HeroURL                      string         `json:"heroUrl"`
+	Leading                      string         `json:"leading"`
+	OgTitle                      string         `json:"og_title"`
+	OgDescription                string         `json:"og_description"`
+	OgImage                      *Photo         `json:"og_image"`
+	IsFeatured                   bool           `json:"isFeatured"`
+	TitleStyle                   string         `json:"title_style"`
+	Type                         string         `json:"type"`
+	Style                        string         `json:"style"`
+	Tags                         []Tag          `json:"tags"`
+	SlideshowImages              []Photo        `json:"slideshow_images"`
+	SlideshowImagesInOrder       []Photo        `json:"slideshow_imagesInInputOrder"`
+	ManualOrderOfSlideshowImages map[string]any `json:"manualOrderOfSlideshowImages"`
+	Posts                        []Post         `json:"posts"`
+	Javascript                   string         `json:"javascript"`
+	Dfp                          string         `json:"dfp"`
+	MobileDfp                    string         `json:"mobile_dfp"`
+	CreatedAt                    string         `json:"createdAt"`
+	UpdatedAt                    string         `json:"updatedAt"`
+	Metadata                     map[string]any `json:"-"`
 }
 
 type Post struct {
@@ -186,6 +221,14 @@ type DateTimeNullableFilter struct {
 	Not    *DateTimeNullableFilter `mapstructure:"not"`
 }
 
+type IDFilter struct {
+	Equals *string `mapstructure:"equals"`
+}
+
+type PostTopicsWhereInput struct {
+	ID *IDFilter `mapstructure:"id"`
+}
+
 type PostWhereInput struct {
 	Slug       *StringFilter               `mapstructure:"slug"`
 	Sections   *SectionManyRelationFilter  `mapstructure:"sections"`
@@ -193,6 +236,8 @@ type PostWhereInput struct {
 	State      *StringFilter               `mapstructure:"state"`
 	IsAdult    *BooleanFilter              `mapstructure:"isAdult"`
 	IsMember   *BooleanFilter              `mapstructure:"isMember"`
+	IsFeatured *BooleanFilter              `mapstructure:"isFeatured"`
+	Topics     *PostTopicsWhereInput       `mapstructure:"topics"`
 }
 
 type PostWhereUniqueInput struct {
@@ -205,6 +250,21 @@ type ExternalWhereInput struct {
 	State         *StringFilter           `mapstructure:"state"`
 	Partner       *PartnerWhereInput      `mapstructure:"partner"`
 	PublishedDate *DateTimeNullableFilter `mapstructure:"publishedDate"`
+}
+
+type TopicWhereInput struct {
+	Slug       *StringFilter  `mapstructure:"slug"`
+	Name       *StringFilter  `mapstructure:"name"`
+	State      *StringFilter  `mapstructure:"state"`
+	IsFeatured *BooleanFilter `mapstructure:"isFeatured"`
+	Type       *StringFilter  `mapstructure:"type"`
+	Style      *StringFilter  `mapstructure:"style"`
+}
+
+type TopicWhereUniqueInput struct {
+	ID   *string `mapstructure:"id"`
+	Name *string `mapstructure:"name"`
+	Slug *string `mapstructure:"slug"`
 }
 
 type OrderRule struct {
@@ -272,6 +332,50 @@ func DecodeExternalWhere(input interface{}) (*ExternalWhereInput, error) {
 	var where ExternalWhereInput
 	if err := decodeInto(input, &where); err != nil {
 		return nil, fmt.Errorf("external where: %w", err)
+	}
+	return &where, nil
+}
+
+func DecodeTopicWhere(input interface{}) (*TopicWhereInput, error) {
+	if input == nil {
+		return nil, nil
+	}
+	var where TopicWhereInput
+	if err := decodeInto(input, &where); err != nil {
+		return nil, fmt.Errorf("topic where: %w", err)
+	}
+	return &where, nil
+}
+
+func DecodeTopicWhereUnique(input interface{}) (*TopicWhereUniqueInput, error) {
+	if input == nil {
+		return nil, nil
+	}
+	var where TopicWhereUniqueInput
+	if err := decodeInto(input, &where); err != nil {
+		return nil, fmt.Errorf("topic unique where: %w", err)
+	}
+	return &where, nil
+}
+
+func DecodeTagWhere(input interface{}) (*TagWhereInput, error) {
+	if input == nil {
+		return nil, nil
+	}
+	var where TagWhereInput
+	if err := decodeInto(input, &where); err != nil {
+		return nil, fmt.Errorf("tag where: %w", err)
+	}
+	return &where, nil
+}
+
+func DecodePhotoWhere(input interface{}) (*PhotoWhereInput, error) {
+	if input == nil {
+		return nil, nil
+	}
+	var where PhotoWhereInput
+	if err := decodeInto(input, &where); err != nil {
+		return nil, fmt.Errorf("photo where: %w", err)
 	}
 	return &where, nil
 }
@@ -867,6 +971,337 @@ func (r *Repo) QueryExternalsCount(ctx context.Context, where *ExternalWhereInpu
 	return count, nil
 }
 
+func (r *Repo) QueryTopics(ctx context.Context, where *TopicWhereInput, orders []OrderRule, take, skip int) ([]Topic, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	// 嘗試從 cache 讀取
+	if r.cache != nil && r.cache.Enabled() {
+		cacheKey := GenerateCacheKey("topics", map[string]interface{}{
+			"where":  where,
+			"orders": orders,
+			"take":   take,
+			"skip":   skip,
+		})
+		var cachedTopics []Topic
+		if found, _ := r.cache.Get(ctx, cacheKey, &cachedTopics); found {
+			return cachedTopics, nil
+		}
+	}
+
+	sb := strings.Builder{}
+	sb.WriteString(`SELECT id, name, slug, "sortOrder", state, brief, "heroImage", "heroUrl", leading, "og_title", "og_description", "og_image", "isFeatured", "title_style", type, style, javascript, dfp, "mobile_dfp", "createdAt", "updatedAt" FROM "Topic" t`)
+
+	conds := []string{}
+	args := []interface{}{}
+	argIdx := 1
+
+	buildStringFilter := func(field string, f *StringFilter) {
+		if f == nil {
+			return
+		}
+		if f.Equals != nil {
+			conds = append(conds, fmt.Sprintf(`%s = $%d`, field, argIdx))
+			args = append(args, *f.Equals)
+			argIdx++
+		}
+		if len(f.In) > 0 {
+			conds = append(conds, fmt.Sprintf(`%s = ANY($%d)`, field, argIdx))
+			args = append(args, f.In)
+			argIdx++
+		}
+	}
+
+	if where != nil {
+		buildStringFilter("slug", where.Slug)
+		buildStringFilter("name", where.Name)
+		buildStringFilter("state", where.State)
+		buildStringFilter("type", where.Type)
+		buildStringFilter("style", where.Style)
+		if where.IsFeatured != nil && where.IsFeatured.Equals != nil {
+			conds = append(conds, fmt.Sprintf(`"isFeatured" = $%d`, argIdx))
+			args = append(args, *where.IsFeatured.Equals)
+			argIdx++
+		}
+	}
+
+	if len(conds) > 0 {
+		sb.WriteString(" WHERE ")
+		sb.WriteString(strings.Join(conds, " AND "))
+	}
+
+	if len(orders) > 0 {
+		sb.WriteString(" ORDER BY ")
+		sb.WriteString(buildTopicOrderClause(orders[0]))
+	} else {
+		sb.WriteString(` ORDER BY "sortOrder" ASC NULLS LAST, "createdAt" DESC`)
+	}
+
+	if take > 0 {
+		sb.WriteString(fmt.Sprintf(" LIMIT %d", take))
+	}
+	if skip > 0 {
+		sb.WriteString(fmt.Sprintf(" OFFSET %d", skip))
+	}
+
+	rows, err := r.db.QueryContext(ctx, sb.String(), args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	topics := []Topic{}
+	for rows.Next() {
+		var (
+			t           Topic
+			dbID        int
+			sortOrder   sql.NullInt64
+			heroImageID sql.NullInt64
+			ogImageID   sql.NullInt64
+			briefRaw    []byte
+			createdAt   sql.NullTime
+			updatedAt   sql.NullTime
+		)
+		if err := rows.Scan(
+			&dbID,
+			&t.Name,
+			&t.Slug,
+			&sortOrder,
+			&t.State,
+			&briefRaw,
+			&heroImageID,
+			&t.HeroURL,
+			&t.Leading,
+			&t.OgTitle,
+			&t.OgDescription,
+			&ogImageID,
+			&t.IsFeatured,
+			&t.TitleStyle,
+			&t.Type,
+			&t.Style,
+			&t.Javascript,
+			&t.Dfp,
+			&t.MobileDfp,
+			&createdAt,
+			&updatedAt,
+		); err != nil {
+			return nil, err
+		}
+		t.ID = strconv.Itoa(dbID)
+		if sortOrder.Valid {
+			val := int(sortOrder.Int64)
+			t.SortOrder = &val
+		}
+		if createdAt.Valid {
+			t.CreatedAt = createdAt.Time.UTC().Format(timeLayoutMilli)
+		}
+		if updatedAt.Valid {
+			t.UpdatedAt = updatedAt.Time.UTC().Format(timeLayoutMilli)
+		}
+		t.Brief = decodeJSONBytes(briefRaw)
+		t.Metadata = map[string]any{
+			"heroImageID": nullableInt(heroImageID),
+			"ogImageID":   nullableInt(ogImageID),
+		}
+		topics = append(topics, t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if len(topics) == 0 {
+		return topics, nil
+	}
+	if err := r.enrichTopics(ctx, topics); err != nil {
+		return nil, err
+	}
+
+	// 寫入 cache
+	if r.cache != nil && r.cache.Enabled() {
+		cacheKey := GenerateCacheKey("topics", map[string]interface{}{
+			"where":  where,
+			"orders": orders,
+			"take":   take,
+			"skip":   skip,
+		})
+		_ = r.cache.Set(ctx, cacheKey, topics)
+	}
+
+	return topics, nil
+}
+
+func (r *Repo) QueryTopicsCount(ctx context.Context, where *TopicWhereInput) (int, error) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	// 嘗試從 cache 讀取
+	if r.cache != nil && r.cache.Enabled() {
+		cacheKey := GenerateCacheKey("topicsCount", where)
+		var cachedCount int
+		if found, _ := r.cache.Get(ctx, cacheKey, &cachedCount); found {
+			return cachedCount, nil
+		}
+	}
+
+	sb := strings.Builder{}
+	sb.WriteString(`SELECT COUNT(*) FROM "Topic" t`)
+
+	conds := []string{}
+	args := []interface{}{}
+	argIdx := 1
+
+	buildStringFilter := func(field string, f *StringFilter) {
+		if f == nil {
+			return
+		}
+		if f.Equals != nil {
+			conds = append(conds, fmt.Sprintf(`%s = $%d`, field, argIdx))
+			args = append(args, *f.Equals)
+			argIdx++
+		}
+	}
+
+	if where != nil {
+		buildStringFilter("slug", where.Slug)
+		buildStringFilter("name", where.Name)
+		buildStringFilter("state", where.State)
+		buildStringFilter("type", where.Type)
+		buildStringFilter("style", where.Style)
+		if where.IsFeatured != nil && where.IsFeatured.Equals != nil {
+			conds = append(conds, fmt.Sprintf(`"isFeatured" = $%d`, argIdx))
+			args = append(args, *where.IsFeatured.Equals)
+			argIdx++
+		}
+	}
+
+	if len(conds) > 0 {
+		sb.WriteString(" WHERE ")
+		sb.WriteString(strings.Join(conds, " AND "))
+	}
+
+	var count int
+	if err := r.db.QueryRowContext(ctx, sb.String(), args...).Scan(&count); err != nil {
+		return 0, err
+	}
+
+	// 寫入 cache
+	if r.cache != nil && r.cache.Enabled() {
+		cacheKey := GenerateCacheKey("topicsCount", where)
+		_ = r.cache.Set(ctx, cacheKey, count)
+	}
+
+	return count, nil
+}
+
+func (r *Repo) QueryTopicByUnique(ctx context.Context, where *TopicWhereUniqueInput) (*Topic, error) {
+	if where == nil {
+		return nil, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	// 嘗試從 cache 讀取
+	if r.cache != nil && r.cache.Enabled() {
+		cacheKey := GenerateCacheKey("topic:unique", where)
+		var cachedTopic *Topic
+		if found, _ := r.cache.Get(ctx, cacheKey, &cachedTopic); found {
+			return cachedTopic, nil
+		}
+	}
+
+	sb := strings.Builder{}
+	sb.WriteString(`SELECT id, name, slug, "sortOrder", state, brief, "heroImage", "heroUrl", leading, "og_title", "og_description", "og_image", "isFeatured", "title_style", type, style, javascript, dfp, "mobile_dfp", "createdAt", "updatedAt" FROM "Topic" t WHERE `)
+	args := []interface{}{}
+	argIdx := 1
+	if where.ID != nil {
+		sb.WriteString(fmt.Sprintf("id = $%d", argIdx))
+		args = append(args, *where.ID)
+		argIdx++
+	} else if where.Slug != nil {
+		sb.WriteString(fmt.Sprintf("slug = $%d", argIdx))
+		args = append(args, *where.Slug)
+		argIdx++
+	} else if where.Name != nil {
+		sb.WriteString(fmt.Sprintf("name = $%d", argIdx))
+		args = append(args, *where.Name)
+		argIdx++
+	} else {
+		return nil, nil
+	}
+	sb.WriteString(" LIMIT 1")
+
+	var (
+		t           Topic
+		dbID        int
+		sortOrder   sql.NullInt64
+		heroImageID sql.NullInt64
+		ogImageID   sql.NullInt64
+		briefRaw    []byte
+		createdAt   sql.NullTime
+		updatedAt   sql.NullTime
+	)
+
+	err := r.db.QueryRowContext(ctx, sb.String(), args...).Scan(
+		&dbID,
+		&t.Name,
+		&t.Slug,
+		&sortOrder,
+		&t.State,
+		&briefRaw,
+		&heroImageID,
+		&t.HeroURL,
+		&t.Leading,
+		&t.OgTitle,
+		&t.OgDescription,
+		&ogImageID,
+		&t.IsFeatured,
+		&t.TitleStyle,
+		&t.Type,
+		&t.Style,
+		&t.Javascript,
+		&t.Dfp,
+		&t.MobileDfp,
+		&createdAt,
+		&updatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	t.ID = strconv.Itoa(dbID)
+	if sortOrder.Valid {
+		val := int(sortOrder.Int64)
+		t.SortOrder = &val
+	}
+	if createdAt.Valid {
+		t.CreatedAt = createdAt.Time.UTC().Format(timeLayoutMilli)
+	}
+	if updatedAt.Valid {
+		t.UpdatedAt = updatedAt.Time.UTC().Format(timeLayoutMilli)
+	}
+	t.Brief = decodeJSONBytes(briefRaw)
+	t.Metadata = map[string]any{
+		"heroImageID": nullableInt(heroImageID),
+		"ogImageID":   nullableInt(ogImageID),
+	}
+
+	topics := []Topic{t}
+	if err := r.enrichTopics(ctx, topics); err != nil {
+		return nil, err
+	}
+	t = topics[0]
+
+	// 寫入 cache
+	if r.cache != nil && r.cache.Enabled() {
+		cacheKey := GenerateCacheKey("topic:unique", where)
+		_ = r.cache.Set(ctx, cacheKey, &t)
+	}
+
+	return &t, nil
+}
+
 // Internal helpers
 func decodeInto(input interface{}, target interface{}) error {
 	cfg := &mapstructure.DecoderConfig{
@@ -964,6 +1399,27 @@ func buildExternalOrder(rule OrderRule) string {
 		return fmt.Sprintf(`e."updatedAt" %s`, dir)
 	default:
 		return `e."publishedDate" DESC`
+	}
+}
+
+func buildTopicOrderClause(rule OrderRule) string {
+	dir := strings.ToUpper(rule.Direction)
+	if dir != "ASC" && dir != "DESC" {
+		dir = "ASC"
+	}
+	switch rule.Field {
+	case "sortOrder":
+		return fmt.Sprintf(`"sortOrder" %s NULLS LAST`, dir)
+	case "createdAt":
+		return fmt.Sprintf(`"createdAt" %s`, dir)
+	case "updatedAt":
+		return fmt.Sprintf(`"updatedAt" %s`, dir)
+	case "name":
+		return fmt.Sprintf(`name %s`, dir)
+	case "slug":
+		return fmt.Sprintf(`slug %s`, dir)
+	default:
+		return `"sortOrder" ASC NULLS LAST, "createdAt" DESC`
 	}
 }
 
@@ -1097,6 +1553,70 @@ func (r *Repo) enrichPosts(ctx context.Context, posts []Post) error {
 				p.RelatedsTwo = &rp
 			}
 		}
+	}
+	return nil
+}
+
+func (r *Repo) enrichTopics(ctx context.Context, topics []Topic) error {
+	if len(topics) == 0 {
+		return nil
+	}
+	topicIDs := make([]int, 0, len(topics))
+	for _, t := range topics {
+		id, _ := strconv.Atoi(t.ID)
+		if id == 0 {
+			continue
+		}
+		topicIDs = append(topicIDs, id)
+	}
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	// 獲取 heroImage 和 og_image
+	imageIDs := []int{}
+	for _, t := range topics {
+		if id := getMetaInt(t.Metadata, "heroImageID"); id > 0 {
+			imageIDs = append(imageIDs, id)
+		}
+		if id := getMetaInt(t.Metadata, "ogImageID"); id > 0 {
+			imageIDs = append(imageIDs, id)
+		}
+	}
+
+	// 獲取 tags
+	tagsMap, _ := r.fetchTopicTags(ctx, topicIDs)
+
+	// 獲取 slideshow_images
+	slideshowMap, slideshowImageIDs, _ := r.fetchTopicSlideshowImages(ctx, topicIDs)
+	imageIDs = append(imageIDs, slideshowImageIDs...)
+
+	// 獲取 images
+	imageMap, err := r.fetchImages(ctx, imageIDs)
+	if err != nil {
+		return err
+	}
+
+	// 組裝資料
+	for i := range topics {
+		t := &topics[i]
+		id, _ := strconv.Atoi(t.ID)
+
+		// 設置 heroImage
+		if idImg := getMetaInt(t.Metadata, "heroImageID"); idImg > 0 {
+			t.HeroImage = imageMap[idImg]
+		}
+
+		// 設置 og_image
+		if idImg := getMetaInt(t.Metadata, "ogImageID"); idImg > 0 {
+			t.OgImage = imageMap[idImg]
+		}
+
+		// 設置 tags
+		t.Tags = tagsMap[id]
+
+		// 設置 slideshow_images
+		t.SlideshowImages = slideshowMap[id]
+		t.SlideshowImagesInOrder = slideshowMap[id]
 	}
 	return nil
 }
@@ -1384,6 +1904,73 @@ func (r *Repo) fetchExternalTags(ctx context.Context, table string, externalIDs 
 		result[eid] = append(result[eid], tg)
 	}
 	return result, rows.Err()
+}
+
+func (r *Repo) fetchTopicTags(ctx context.Context, topicIDs []int) (map[int][]Tag, error) {
+	result := map[int][]Tag{}
+	if len(topicIDs) == 0 {
+		return result, nil
+	}
+	query := `SELECT t."A" as topic_id, tg.id, tg.name, tg.slug FROM "Tag_topics" t JOIN "Tag" tg ON tg.id = t."B" WHERE t."A" = ANY($1)`
+	rows, err := r.db.QueryContext(ctx, query, pqIntArray(topicIDs))
+	if err != nil {
+		return result, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var tid int
+		var tg Tag
+		if err := rows.Scan(&tid, &tg.ID, &tg.Name, &tg.Slug); err != nil {
+			return result, err
+		}
+		result[tid] = append(result[tid], tg)
+	}
+	return result, rows.Err()
+}
+
+func (r *Repo) fetchTopicSlideshowImages(ctx context.Context, topicIDs []int) (map[int][]Photo, []int, error) {
+	result := map[int][]Photo{}
+	imageIDs := []int{}
+	if len(topicIDs) == 0 {
+		return result, imageIDs, nil
+	}
+	query := `SELECT t."A" as topic_id, im.id, COALESCE(im."imageFile_id", ''), COALESCE(im."imageFile_extension", ''), im."imageFile_width", im."imageFile_height", COALESCE(im.name, '') as name, COALESCE(im."topicKeywords", '') as topicKeywords FROM "Topic_slideshow_images" t JOIN "Image" im ON im.id = t."B" WHERE t."A" = ANY($1)`
+	rows, err := r.db.QueryContext(ctx, query, pqIntArray(topicIDs))
+	if err != nil {
+		return result, imageIDs, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var tid int
+		var im struct {
+			id            int
+			fileID        string
+			ext           string
+			width         sql.NullInt64
+			height        sql.NullInt64
+			name          string
+			topicKeywords string
+		}
+		if err := rows.Scan(&tid, &im.id, &im.fileID, &im.ext, &im.width, &im.height, &im.name, &im.topicKeywords); err != nil {
+			return result, imageIDs, err
+		}
+		imageIDs = append(imageIDs, im.id)
+		photo := Photo{
+			ID: strconv.Itoa(im.id),
+			ImageFile: ImageFile{
+				Width:  int(im.width.Int64),
+				Height: int(im.height.Int64),
+			},
+		}
+		photo.Resized = r.buildResizedURLs(im.fileID, im.ext)
+		photo.ResizedWebp = r.buildResizedURLs(im.fileID, "webp")
+		photo.Metadata = map[string]any{
+			"name":          im.name,
+			"topicKeywords": im.topicKeywords,
+		}
+		result[tid] = append(result[tid], photo)
+	}
+	return result, imageIDs, rows.Err()
 }
 
 func pqIntArray(ids []int) interface{} {

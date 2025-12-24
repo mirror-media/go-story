@@ -183,6 +183,87 @@ func runProbeTests(target string) []ProbeResult {
 				},
 			},
 		},
+		{
+			name: "topics_list",
+			body: map[string]any{
+				"query": `query ($take:Int,$skip:Int,$orderBy:[TopicOrderByInput!]!,$filter:TopicWhereInput!){
+					topicsCount(where:$filter)
+					topics(take:$take,skip:$skip,orderBy:$orderBy,where:$filter){
+						id slug name brief createdAt style
+						heroImage{ id imageFile{ width height } resized{ original w480 w800 w1200 w1600 w2400 } resizedWebp{ original w480 w800 w1200 w1600 w2400 } }
+						og_image{ id imageFile{ width height } resized{ original w480 w800 w1200 w1600 w2400 } resizedWebp{ original w480 w800 w1200 w1600 w2400 } }
+					}
+				}`,
+				"variables": map[string]any{
+					"take":    3,
+					"skip":    0,
+					"orderBy": []map[string]string{{"sortOrder": "asc"}},
+					"filter": map[string]any{
+						"state": map[string]any{"equals": "published"},
+					},
+				},
+			},
+		},
+		{
+			name: "topic_by_slug",
+			body: map[string]any{
+				"query": `query ($topicFilter:TopicWhereInput!,$postsFilter:PostWhereInput!,$featuredPostsCountFilter:PostWhereInput,$postsOrderBy:[PostOrderByInput!]!,$postsTake:Int,$postsSkip:Int!){
+					topics(where:$topicFilter){
+						id slug name brief createdAt style heroUrl leading type
+						heroImage{ id imageFile{ width height } resized{ original w480 w800 w1200 w1600 w2400 } resizedWebp{ original w480 w800 w1200 w1600 w2400 } }
+						og_image{ id imageFile{ width height } resized{ original w480 w800 w1200 w1600 w2400 } resizedWebp{ original w480 w800 w1200 w1600 w2400 } }
+						og_description
+						postsCount(where:$postsFilter)
+						featuredPostsCount: postsCount(where:$featuredPostsCountFilter)
+						tags{ id name slug }
+						slideshow_images{ id name topicKeywords resized{ original w480 w800 w1200 w1600 w2400 } }
+						manualOrderOfSlideshowImages
+						dfp
+						posts(where:$postsFilter,orderBy:$postsOrderBy,take:$postsTake,skip:$postsSkip){
+							id slug title publishedDate updatedAt brief state
+							categories(where:{state:{equals:"active"}}){ id name slug state }
+							sections(where:{state:{equals:"active"}}){ id name slug state }
+							heroImage{ id imageFile{ width height } resized{ original w480 w800 w1200 w1600 w2400 } resizedWebp{ original w480 w800 w1200 w1600 w2400 } }
+							tags{ id name slug }
+							isFeatured
+						}
+					}
+				}`,
+				"variables": map[string]any{
+					"topicFilter": map[string]any{
+						"slug": map[string]any{"equals": "test-topic"},
+					},
+					"postsFilter": map[string]any{
+						"state": map[string]any{"equals": "published"},
+					},
+					"featuredPostsCountFilter": map[string]any{
+						"state":      map[string]any{"equals": "published"},
+						"isFeatured": map[string]any{"equals": true},
+					},
+					"postsOrderBy": []map[string]string{{"publishedDate": "desc"}},
+					"postsTake":    10,
+					"postsSkip":    0,
+				},
+			},
+		},
+		{
+			name: "topic_post_count",
+			body: map[string]any{
+				"query": `query ($topicFilter:TopicWhereUniqueInput!,$postsCountFilter:PostWhereInput){
+					topic(where:$topicFilter){
+						postsCount(where:$postsCountFilter)
+					}
+				}`,
+				"variables": map[string]any{
+					"topicFilter": map[string]any{
+						"slug": "test-topic",
+					},
+					"postsCountFilter": map[string]any{
+						"state": map[string]any{"equals": "published"},
+					},
+				},
+			},
+		},
 	}
 
 	results := make([]ProbeResult, 0, len(tests))
