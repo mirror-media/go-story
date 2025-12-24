@@ -274,7 +274,33 @@ func Build(repo *data.Repo) (graphql.Schema, error) {
 	photoType := graphql.NewObject(graphql.ObjectConfig{
 		Name: "Photo",
 		Fields: graphql.Fields{
-			"id":          &graphql.Field{Type: graphql.ID},
+			"id": &graphql.Field{Type: graphql.ID},
+			"name": &graphql.Field{
+				Type: graphql.String,
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					photo, ok := p.Source.(*data.Photo)
+					if !ok || photo == nil {
+						return nil, nil
+					}
+					if name, ok := photo.Metadata["name"].(string); ok {
+						return name, nil
+					}
+					return photo.Name, nil
+				},
+			},
+			"topicKeywords": &graphql.Field{
+				Type: graphql.String,
+				Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+					photo, ok := p.Source.(*data.Photo)
+					if !ok || photo == nil {
+						return nil, nil
+					}
+					if keywords, ok := photo.Metadata["topicKeywords"].(string); ok {
+						return keywords, nil
+					}
+					return photo.TopicKeywords, nil
+				},
+			},
 			"imageFile":   &graphql.Field{Type: imageFileType},
 			"resized":     &graphql.Field{Type: resizedType},
 			"resizedWebp": &graphql.Field{Type: resizedType},

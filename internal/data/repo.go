@@ -30,11 +30,13 @@ type Resized struct {
 }
 
 type Photo struct {
-	ID          string         `json:"id"`
-	ImageFile   ImageFile      `json:"imageFile"`
-	Resized     Resized        `json:"resized"`
-	ResizedWebp Resized        `json:"resizedWebp"`
-	Metadata    map[string]any `json:"-"`
+	ID            string         `json:"id"`
+	Name          string         `json:"name"`
+	TopicKeywords string         `json:"topicKeywords"`
+	ImageFile     ImageFile      `json:"imageFile"`
+	Resized       Resized        `json:"resized"`
+	ResizedWebp   Resized        `json:"resizedWebp"`
+	Metadata      map[string]any `json:"-"`
 }
 
 type Section struct {
@@ -1061,6 +1063,16 @@ func (r *Repo) QueryTopics(ctx context.Context, where *TopicWhereInput, orders [
 			briefRaw    []byte
 			createdAt   sql.NullTime
 			updatedAt   sql.NullTime
+			heroURL     sql.NullString
+			leading     sql.NullString
+			ogTitle     sql.NullString
+			ogDesc      sql.NullString
+			titleStyle  sql.NullString
+			typeVal     sql.NullString
+			styleVal    sql.NullString
+			javascript  sql.NullString
+			dfp         sql.NullString
+			mobileDfp   sql.NullString
 		)
 		if err := rows.Scan(
 			&dbID,
@@ -1070,18 +1082,18 @@ func (r *Repo) QueryTopics(ctx context.Context, where *TopicWhereInput, orders [
 			&t.State,
 			&briefRaw,
 			&heroImageID,
-			&t.HeroURL,
-			&t.Leading,
-			&t.OgTitle,
-			&t.OgDescription,
+			&heroURL,
+			&leading,
+			&ogTitle,
+			&ogDesc,
 			&ogImageID,
 			&t.IsFeatured,
-			&t.TitleStyle,
-			&t.Type,
-			&t.Style,
-			&t.Javascript,
-			&t.Dfp,
-			&t.MobileDfp,
+			&titleStyle,
+			&typeVal,
+			&styleVal,
+			&javascript,
+			&dfp,
+			&mobileDfp,
 			&createdAt,
 			&updatedAt,
 		); err != nil {
@@ -1099,6 +1111,36 @@ func (r *Repo) QueryTopics(ctx context.Context, where *TopicWhereInput, orders [
 			t.UpdatedAt = updatedAt.Time.UTC().Format(timeLayoutMilli)
 		}
 		t.Brief = decodeJSONBytes(briefRaw)
+		if heroURL.Valid {
+			t.HeroURL = heroURL.String
+		}
+		if leading.Valid {
+			t.Leading = leading.String
+		}
+		if ogTitle.Valid {
+			t.OgTitle = ogTitle.String
+		}
+		if ogDesc.Valid {
+			t.OgDescription = ogDesc.String
+		}
+		if titleStyle.Valid {
+			t.TitleStyle = titleStyle.String
+		}
+		if typeVal.Valid {
+			t.Type = typeVal.String
+		}
+		if styleVal.Valid {
+			t.Style = styleVal.String
+		}
+		if javascript.Valid {
+			t.Javascript = javascript.String
+		}
+		if dfp.Valid {
+			t.Dfp = dfp.String
+		}
+		if mobileDfp.Valid {
+			t.MobileDfp = mobileDfp.String
+		}
 		t.Metadata = map[string]any{
 			"heroImageID": nullableInt(heroImageID),
 			"ogImageID":   nullableInt(ogImageID),
@@ -1239,6 +1281,16 @@ func (r *Repo) QueryTopicByUnique(ctx context.Context, where *TopicWhereUniqueIn
 		briefRaw    []byte
 		createdAt   sql.NullTime
 		updatedAt   sql.NullTime
+		heroURL     sql.NullString
+		leading     sql.NullString
+		ogTitle     sql.NullString
+		ogDesc      sql.NullString
+		titleStyle  sql.NullString
+		typeVal     sql.NullString
+		styleVal    sql.NullString
+		javascript  sql.NullString
+		dfp         sql.NullString
+		mobileDfp   sql.NullString
 	)
 
 	err := r.db.QueryRowContext(ctx, sb.String(), args...).Scan(
@@ -1249,18 +1301,18 @@ func (r *Repo) QueryTopicByUnique(ctx context.Context, where *TopicWhereUniqueIn
 		&t.State,
 		&briefRaw,
 		&heroImageID,
-		&t.HeroURL,
-		&t.Leading,
-		&t.OgTitle,
-		&t.OgDescription,
+		&heroURL,
+		&leading,
+		&ogTitle,
+		&ogDesc,
 		&ogImageID,
 		&t.IsFeatured,
-		&t.TitleStyle,
-		&t.Type,
-		&t.Style,
-		&t.Javascript,
-		&t.Dfp,
-		&t.MobileDfp,
+		&titleStyle,
+		&typeVal,
+		&styleVal,
+		&javascript,
+		&dfp,
+		&mobileDfp,
 		&createdAt,
 		&updatedAt,
 	)
@@ -1282,6 +1334,36 @@ func (r *Repo) QueryTopicByUnique(ctx context.Context, where *TopicWhereUniqueIn
 		t.UpdatedAt = updatedAt.Time.UTC().Format(timeLayoutMilli)
 	}
 	t.Brief = decodeJSONBytes(briefRaw)
+	if heroURL.Valid {
+		t.HeroURL = heroURL.String
+	}
+	if leading.Valid {
+		t.Leading = leading.String
+	}
+	if ogTitle.Valid {
+		t.OgTitle = ogTitle.String
+	}
+	if ogDesc.Valid {
+		t.OgDescription = ogDesc.String
+	}
+	if titleStyle.Valid {
+		t.TitleStyle = titleStyle.String
+	}
+	if typeVal.Valid {
+		t.Type = typeVal.String
+	}
+	if styleVal.Valid {
+		t.Style = styleVal.String
+	}
+	if javascript.Valid {
+		t.Javascript = javascript.String
+	}
+	if dfp.Valid {
+		t.Dfp = dfp.String
+	}
+	if mobileDfp.Valid {
+		t.MobileDfp = mobileDfp.String
+	}
 	t.Metadata = map[string]any{
 		"heroImageID": nullableInt(heroImageID),
 		"ogImageID":   nullableInt(ogImageID),
@@ -1956,7 +2038,9 @@ func (r *Repo) fetchTopicSlideshowImages(ctx context.Context, topicIDs []int) (m
 		}
 		imageIDs = append(imageIDs, im.id)
 		photo := Photo{
-			ID: strconv.Itoa(im.id),
+			ID:            strconv.Itoa(im.id),
+			Name:          im.name,
+			TopicKeywords: im.topicKeywords,
 			ImageFile: ImageFile{
 				Width:  int(im.width.Int64),
 				Height: int(im.height.Int64),
@@ -1964,10 +2048,6 @@ func (r *Repo) fetchTopicSlideshowImages(ctx context.Context, topicIDs []int) (m
 		}
 		photo.Resized = r.buildResizedURLs(im.fileID, im.ext)
 		photo.ResizedWebp = r.buildResizedURLs(im.fileID, "webp")
-		photo.Metadata = map[string]any{
-			"name":          im.name,
-			"topicKeywords": im.topicKeywords,
-		}
 		result[tid] = append(result[tid], photo)
 	}
 	return result, imageIDs, rows.Err()
