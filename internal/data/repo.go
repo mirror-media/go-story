@@ -60,6 +60,17 @@ type Contact struct {
 	Name string `json:"name"`
 }
 
+type Group struct {
+	ID      string `json:"id"`
+	Keyword string `json:"keyword"`
+}
+
+type User struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
 type Tag struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
@@ -121,67 +132,77 @@ type Topic struct {
 }
 
 type Post struct {
-	ID                     string         `json:"id"`
-	Slug                   string         `json:"slug"`
-	Title                  string         `json:"title"`
-	Subtitle               string         `json:"subtitle"`
-	State                  string         `json:"state"`
-	Style                  string         `json:"style"`
-	PublishedDate          string         `json:"publishedDate"`
-	UpdatedAt              string         `json:"updatedAt"`
-	IsMember               bool           `json:"isMember"`
-	IsAdult                bool           `json:"isAdult"`
-	Sections               []Section      `json:"sections"`
-	SectionsInInputOrder   []Section      `json:"sectionsInInputOrder"`
-	Categories             []Category     `json:"categories"`
-	CategoriesInInputOrder []Category     `json:"categoriesInInputOrder"`
-	Writers                []Contact      `json:"writers"`
-	WritersInInputOrder    []Contact      `json:"writersInInputOrder"`
-	Photographers          []Contact      `json:"photographers"`
-	CameraMan              []Contact      `json:"camera_man"`
-	Designers              []Contact      `json:"designers"`
-	Engineers              []Contact      `json:"engineers"`
-	Vocals                 []Contact      `json:"vocals"`
-	ExtendByline           string         `json:"extend_byline"`
-	Tags                   []Tag          `json:"tags"`
-	TagsAlgo               []Tag          `json:"tags_algo"`
-	HeroVideo              *Video         `json:"heroVideo"`
-	HeroImage              *Photo         `json:"heroImage"`
-	HeroCaption            string         `json:"heroCaption"`
-	Brief                  map[string]any `json:"brief"`
-	TrimmedContent         map[string]any `json:"trimmedContent"`
-	Content                map[string]any `json:"content"`
-	Relateds               []Post         `json:"relateds"`
-	RelatedsInInputOrder   []Post         `json:"relatedsInInputOrder"`
-	RelatedsOne            *Post          `json:"relatedsOne"`
-	RelatedsTwo            *Post          `json:"relatedsTwo"`
-	Redirect               string         `json:"redirect"`
-	OgTitle                string         `json:"og_title"`
-	OgImage                *Photo         `json:"og_image"`
-	OgDescription          string         `json:"og_description"`
-	HiddenAdvertised       bool           `json:"hiddenAdvertised"`
-	IsAdvertised           bool           `json:"isAdvertised"`
-	IsFeatured             bool           `json:"isFeatured"`
-	Topics                 *Topic         `json:"topics"`
-	Metadata               map[string]any `json:"-"`
+	ID                     string           `json:"id"`
+	Slug                   string           `json:"slug"`
+	Title                  string           `json:"title"`
+	Subtitle               string           `json:"subtitle"`
+	State                  string           `json:"state"`
+	Style                  string           `json:"style"`
+	PublishedDate          string           `json:"publishedDate"`
+	UpdatedAt              string           `json:"updatedAt"`
+	IsMember               bool             `json:"isMember"`
+	IsAdult                bool             `json:"isAdult"`
+	Sections               []Section        `json:"sections"`
+	SectionsInInputOrder   []Section        `json:"sectionsInInputOrder"`
+	Categories             []Category       `json:"categories"`
+	CategoriesInInputOrder []Category       `json:"categoriesInInputOrder"`
+	Writers                []Contact        `json:"writers"`
+	WritersInInputOrder    []Contact        `json:"writersInInputOrder"`
+	Photographers          []Contact        `json:"photographers"`
+	CameraMan              []Contact        `json:"camera_man"`
+	Designers              []Contact        `json:"designers"`
+	Engineers              []Contact        `json:"engineers"`
+	Vocals                 []Contact        `json:"vocals"`
+	ExtendByline           string           `json:"extend_byline"`
+	Tags                   []Tag            `json:"tags"`
+	TagsAlgo               []Tag            `json:"tags_algo"`
+	HeroVideo              *Video           `json:"heroVideo"`
+	HeroImage              *Photo           `json:"heroImage"`
+	HeroCaption            string           `json:"heroCaption"`
+	Brief                  map[string]any   `json:"brief"`
+	TrimmedContent         map[string]any   `json:"trimmedContent"`
+	Content                map[string]any   `json:"content"`
+	Relateds               []Post           `json:"relateds"`
+	RelatedsInInputOrder   []Post           `json:"relatedsInInputOrder"`
+	RelatedsOne            *Post            `json:"relatedsOne"`
+	RelatedsTwo            *Post            `json:"relatedsTwo"`
+	Redirect               string           `json:"redirect"`
+	OgTitle                string           `json:"og_title"`
+	OgImage                *Photo           `json:"og_image"`
+	OgDescription          string           `json:"og_description"`
+	HiddenAdvertised       bool             `json:"hiddenAdvertised"`
+	IsAdvertised           bool             `json:"isAdvertised"`
+	IsFeatured             bool             `json:"isFeatured"`
+	Topics                 *Topic           `json:"topics"`
+	ManualOrderOfRelateds  []map[string]any `json:"-"`
+	Metadata               map[string]any   `json:"-"`
 }
 
 type External struct {
-	ID            string         `json:"id"`
-	Slug          string         `json:"slug"`
-	Partner       *Partner       `json:"partner"`
-	Title         string         `json:"title"`
-	State         string         `json:"state"`
-	PublishedDate string         `json:"publishedDate"`
-	ExtendByline  string         `json:"extend_byline"`
-	Thumb         string         `json:"thumb"`
-	ThumbCaption  string         `json:"thumbCaption"`
-	Brief         string         `json:"brief"`
-	Content       string         `json:"content"`
-	UpdatedAt     string         `json:"updatedAt"`
-	Tags          []Tag          `json:"tags"`
-	Relateds      []Post         `json:"relateds"`
-	Metadata      map[string]any `json:"metadata"`
+	ID                  string         `json:"id"`
+	Slug                string         `json:"slug"`
+	Partner             *Partner       `json:"partner"`
+	Title               string         `json:"title"`
+	State               string         `json:"state"`
+	PublishedDate       string         `json:"publishedDate"`
+	PublishedDateString string         `json:"publishedDateString"`
+	ExtendByline        string         `json:"extend_byline"`
+	Thumb               string         `json:"thumb"`
+	ThumbCaption        string         `json:"thumbCaption"`
+	Brief               string         `json:"brief"`
+	Content             string         `json:"content"`
+	Source              string         `json:"source"`
+	Tags                []Tag          `json:"tags"`
+	TagsAlgo            []Tag          `json:"tags_algo"`
+	Sections            []Section      `json:"sections"`
+	Categories          []Category     `json:"categories"`
+	Relateds            []Post         `json:"relateds"`
+	Groups              []Group        `json:"groups"`
+	CreatedAt           string         `json:"createdAt"`
+	UpdatedAt           string         `json:"updatedAt"`
+	CreatedBy           *User          `json:"createdBy"`
+	UpdatedBy           *User          `json:"updatedBy"`
+	Metadata            map[string]any `json:"metadata"`
 }
 
 // Filters
@@ -404,7 +425,7 @@ func (r *Repo) QueryPosts(ctx context.Context, where *PostWhereInput, orders []O
 	}
 
 	sb := strings.Builder{}
-	sb.WriteString(`SELECT id, slug, title, subtitle, state, style, "isMember", "isAdult", "publishedDate", "updatedAt", COALESCE("heroCaption",'') as heroCaption, COALESCE("extend_byline",'') as extend_byline, "heroImage", "heroVideo", brief, content, COALESCE(redirect,'') as redirect, COALESCE(og_title,'') as og_title, COALESCE(og_description,'') as og_description, "hiddenAdvertised", "isAdvertised", "isFeatured", topics, "og_image", "relatedsOne", "relatedsTwo" FROM "Post" p`)
+	sb.WriteString(`SELECT id, slug, title, subtitle, state, style, "isMember", "isAdult", "publishedDate", "updatedAt", COALESCE("heroCaption",'') as heroCaption, COALESCE("extend_byline",'') as extend_byline, "heroImage", "heroVideo", brief, content, COALESCE(redirect,'') as redirect, COALESCE(og_title,'') as og_title, COALESCE(og_description,'') as og_description, "hiddenAdvertised", "isAdvertised", "isFeatured", topics, "og_image", "relatedsOne", "relatedsTwo", "manualOrderOfRelateds" FROM "Post" p`)
 
 	conds := []string{}
 	args := []interface{}{}
@@ -504,18 +525,19 @@ func (r *Repo) QueryPosts(ctx context.Context, where *PostWhereInput, orders []O
 	posts := []Post{}
 	for rows.Next() {
 		var (
-			p             Post
-			dbID          int
-			publishedAt   sql.NullTime
-			updatedAt     sql.NullTime
-			heroImageID   sql.NullInt64
-			heroVideoID   sql.NullInt64
-			ogImageID     sql.NullInt64
-			topicsID      sql.NullInt64
-			relatedsOneID sql.NullInt64
-			relatedsTwoID sql.NullInt64
-			briefRaw      []byte
-			contentRaw    []byte
+			p                        Post
+			dbID                     int
+			publishedAt              sql.NullTime
+			updatedAt                sql.NullTime
+			heroImageID              sql.NullInt64
+			heroVideoID              sql.NullInt64
+			ogImageID                sql.NullInt64
+			topicsID                 sql.NullInt64
+			relatedsOneID            sql.NullInt64
+			relatedsTwoID            sql.NullInt64
+			briefRaw                 []byte
+			contentRaw               []byte
+			manualOrderOfRelatedsRaw []byte
 		)
 		if err := rows.Scan(
 			&dbID,
@@ -544,6 +566,7 @@ func (r *Repo) QueryPosts(ctx context.Context, where *PostWhereInput, orders []O
 			&ogImageID,
 			&relatedsOneID,
 			&relatedsTwoID,
+			&manualOrderOfRelatedsRaw,
 		); err != nil {
 			return nil, err
 		}
@@ -557,6 +580,7 @@ func (r *Repo) QueryPosts(ctx context.Context, where *PostWhereInput, orders []O
 		p.Brief = decodeJSONBytes(briefRaw)
 		p.Content = decodeJSONBytes(contentRaw)
 		p.TrimmedContent = p.Content
+		p.ManualOrderOfRelateds = decodeJSONArray(manualOrderOfRelatedsRaw)
 		p.Metadata = map[string]any{
 			"heroImageID":   nullableInt(heroImageID),
 			"ogImageID":     nullableInt(ogImageID),
@@ -692,7 +716,7 @@ func (r *Repo) QueryPostByUnique(ctx context.Context, where *PostWhereUniqueInpu
 	}
 
 	sb := strings.Builder{}
-	sb.WriteString(`SELECT id, slug, title, subtitle, state, style, "isMember", "isAdult", "publishedDate", "updatedAt", COALESCE("heroCaption",'') as heroCaption, COALESCE("extend_byline",'') as extend_byline, "heroImage", "heroVideo", brief, content, COALESCE(redirect,'') as redirect, COALESCE(og_title,'') as og_title, COALESCE(og_description,'') as og_description, "hiddenAdvertised", "isAdvertised", "isFeatured", topics, "og_image", "relatedsOne", "relatedsTwo" FROM "Post" p WHERE `)
+	sb.WriteString(`SELECT id, slug, title, subtitle, state, style, "isMember", "isAdult", "publishedDate", "updatedAt", COALESCE("heroCaption",'') as heroCaption, COALESCE("extend_byline",'') as extend_byline, "heroImage", "heroVideo", brief, content, COALESCE(redirect,'') as redirect, COALESCE(og_title,'') as og_title, COALESCE(og_description,'') as og_description, "hiddenAdvertised", "isAdvertised", "isFeatured", topics, "og_image", "relatedsOne", "relatedsTwo", "manualOrderOfRelateds" FROM "Post" p WHERE `)
 	args := []interface{}{}
 	argIdx := 1
 	if where.ID != nil {
@@ -706,21 +730,24 @@ func (r *Repo) QueryPostByUnique(ctx context.Context, where *PostWhereUniqueInpu
 	} else {
 		return nil, nil
 	}
+	// 只回傳 state = 'published' 的文章
+	sb.WriteString(" AND state = 'published'")
 	sb.WriteString(" LIMIT 1")
 
 	var (
-		p             Post
-		dbID          int
-		publishedAt   sql.NullTime
-		updatedAt     sql.NullTime
-		heroImageID   sql.NullInt64
-		heroVideoID   sql.NullInt64
-		ogImageID     sql.NullInt64
-		topicsID      sql.NullInt64
-		relatedsOneID sql.NullInt64
-		relatedsTwoID sql.NullInt64
-		briefRaw      []byte
-		contentRaw    []byte
+		p                        Post
+		dbID                     int
+		publishedAt              sql.NullTime
+		updatedAt                sql.NullTime
+		heroImageID              sql.NullInt64
+		heroVideoID              sql.NullInt64
+		ogImageID                sql.NullInt64
+		topicsID                 sql.NullInt64
+		relatedsOneID            sql.NullInt64
+		relatedsTwoID            sql.NullInt64
+		briefRaw                 []byte
+		contentRaw               []byte
+		manualOrderOfRelatedsRaw []byte
 	)
 
 	err := r.db.QueryRowContext(ctx, sb.String(), args...).Scan(
@@ -750,6 +777,7 @@ func (r *Repo) QueryPostByUnique(ctx context.Context, where *PostWhereUniqueInpu
 		&ogImageID,
 		&relatedsOneID,
 		&relatedsTwoID,
+		&manualOrderOfRelatedsRaw,
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -767,6 +795,7 @@ func (r *Repo) QueryPostByUnique(ctx context.Context, where *PostWhereUniqueInpu
 	p.Brief = decodeJSONBytes(briefRaw)
 	p.Content = decodeJSONBytes(contentRaw)
 	p.TrimmedContent = p.Content
+	p.ManualOrderOfRelateds = decodeJSONArray(manualOrderOfRelatedsRaw)
 	p.Metadata = map[string]any{
 		"heroImageID":   nullableInt(heroImageID),
 		"ogImageID":     nullableInt(ogImageID),
@@ -811,7 +840,7 @@ func (r *Repo) QueryExternals(ctx context.Context, where *ExternalWhereInput, or
 	}
 
 	sb := strings.Builder{}
-	sb.WriteString(`SELECT e.id, e.slug, e.title, e.state, e."publishedDate", e."extend_byline", e.thumb, e."thumbCaption", e.brief, e.content, e.partner, e."updatedAt" FROM "External" e`)
+	sb.WriteString(`SELECT e.id, e.slug, e.title, e.state, e."publishedDate", e."publishedDateString", e."extend_byline", e.thumb, e."thumbCaption", e.brief, e.content, e.source, e.partner, e."createdAt", e."updatedAt" FROM "External" e`)
 
 	conds := []string{}
 	args := []interface{}{}
@@ -887,20 +916,30 @@ func (r *Repo) QueryExternals(ctx context.Context, where *ExternalWhereInput, or
 		var ext External
 		var partnerID sql.NullInt64
 		var dbID int
-		var pubAt, updAt sql.NullTime
-		if err := rows.Scan(&dbID, &ext.Slug, &ext.Title, &ext.State, &pubAt, &ext.ExtendByline, &ext.Thumb, &ext.ThumbCaption, &ext.Brief, &ext.Content, &partnerID, &updAt); err != nil {
+		var pubAt, createdAt, updAt sql.NullTime
+		var publishedDateString sql.NullString
+		if err := rows.Scan(&dbID, &ext.Slug, &ext.Title, &ext.State, &pubAt, &publishedDateString, &ext.ExtendByline, &ext.Thumb, &ext.ThumbCaption, &ext.Brief, &ext.Content, &ext.Source, &partnerID, &createdAt, &updAt); err != nil {
 			return nil, err
 		}
 		ext.ID = strconv.Itoa(dbID)
 		if pubAt.Valid {
 			ext.PublishedDate = pubAt.Time.UTC().Format(timeLayoutMilli)
 		}
+		if publishedDateString.Valid {
+			ext.PublishedDateString = publishedDateString.String
+		}
+		if createdAt.Valid {
+			ext.CreatedAt = createdAt.Time.UTC().Format(timeLayoutMilli)
+		}
 		if updAt.Valid {
 			ext.UpdatedAt = updAt.Time.UTC().Format(timeLayoutMilli)
 		}
 		externalIDs = append(externalIDs, dbID)
 		if partnerID.Valid {
-			ext.Metadata = map[string]any{"partnerID": int(partnerID.Int64)}
+			if ext.Metadata == nil {
+				ext.Metadata = map[string]any{}
+			}
+			ext.Metadata["partnerID"] = int(partnerID.Int64)
 			partnerIDs = append(partnerIDs, int(partnerID.Int64))
 		}
 		result = append(result, ext)
@@ -911,12 +950,22 @@ func (r *Repo) QueryExternals(ctx context.Context, where *ExternalWhereInput, or
 
 	partners, _ := r.fetchPartners(ctx, partnerIDs)
 	tagsMap, _ := r.fetchExternalTags(ctx, "_External_tags", externalIDs)
+	tagsAlgoMap, _ := r.fetchExternalTags(ctx, "_External_tags_algo", externalIDs)
+	sectionsMap, _ := r.fetchExternalSections(ctx, externalIDs)
+	categoriesMap, _ := r.fetchExternalCategories(ctx, externalIDs)
+	groupsMap, _ := r.fetchExternalGroups(ctx, externalIDs)
+	relatedsMap, _ := r.fetchExternalRelateds(ctx, externalIDs)
 	for i := range result {
 		if pid := getMetaInt(result[i].Metadata, "partnerID"); pid > 0 {
 			result[i].Partner = partners[pid]
 		}
 		idInt, _ := strconv.Atoi(result[i].ID)
 		result[i].Tags = tagsMap[idInt]
+		result[i].TagsAlgo = tagsAlgoMap[idInt]
+		result[i].Sections = sectionsMap[idInt]
+		result[i].Categories = categoriesMap[idInt]
+		result[i].Groups = groupsMap[idInt]
+		result[i].Relateds = relatedsMap[idInt]
 	}
 
 	// 寫入 cache
@@ -1430,6 +1479,17 @@ func decodeJSONBytes(raw []byte) map[string]any {
 	return m
 }
 
+func decodeJSONArray(raw []byte) []map[string]any {
+	if len(raw) == 0 {
+		return nil
+	}
+	var arr []map[string]any
+	if err := json.Unmarshal(raw, &arr); err != nil {
+		return nil
+	}
+	return arr
+}
+
 func nullableInt(v sql.NullInt64) int {
 	if v.Valid {
 		return int(v.Int64)
@@ -1544,6 +1604,21 @@ func (r *Repo) enrichPosts(ctx context.Context, posts []Post) error {
 	}
 	imageIDs := append([]int{}, relatedImageIDs...)
 
+	// Fetch relatedsInInputOrder based on manualOrderOfRelateds for each post
+	relatedsInInputOrderMap := make(map[int][]Post)
+	relatedsInInputOrderImageIDs := []int{}
+	for _, p := range posts {
+		id, _ := strconv.Atoi(p.ID)
+		relatedsInOrder, imgIDs, err := r.fetchRelatedsByManualOrder(ctx, p.ManualOrderOfRelateds)
+		if err != nil {
+			// Log error but continue
+			continue
+		}
+		relatedsInInputOrderMap[id] = relatedsInOrder
+		relatedsInInputOrderImageIDs = append(relatedsInInputOrderImageIDs, imgIDs...)
+	}
+	imageIDs = append(imageIDs, relatedsInInputOrderImageIDs...)
+
 	relatedOneIDs := []int{}
 	relatedTwoIDs := []int{}
 	for _, p := range posts {
@@ -1610,7 +1685,10 @@ func (r *Repo) enrichPosts(ctx context.Context, posts []Post) error {
 		p.Tags = tagsMap[id]
 		p.TagsAlgo = tagsAlgoMap[id]
 		p.Relateds = relatedsMap[id]
-		p.RelatedsInInputOrder = relatedsMap[id]
+		p.RelatedsInInputOrder = relatedsInInputOrderMap[id]
+		if p.RelatedsInInputOrder == nil {
+			p.RelatedsInInputOrder = []Post{}
+		}
 		if idImg := getMetaInt(p.Metadata, "heroImageID"); idImg > 0 {
 			p.HeroImage = imageMap[idImg]
 		}
@@ -1627,12 +1705,30 @@ func (r *Repo) enrichPosts(ctx context.Context, posts []Post) error {
 		}
 		if r1 := getMetaInt(p.Metadata, "relatedsOneID"); r1 > 0 {
 			if rp, ok := relatedSinglePosts[r1]; ok {
+				if idImg := getMetaInt(rp.Metadata, "heroImageID"); idImg > 0 {
+					rp.HeroImage = imageMap[idImg]
+				}
 				p.RelatedsOne = &rp
 			}
 		}
 		if r2 := getMetaInt(p.Metadata, "relatedsTwoID"); r2 > 0 {
 			if rp, ok := relatedSinglePosts[r2]; ok {
+				if idImg := getMetaInt(rp.Metadata, "heroImageID"); idImg > 0 {
+					rp.HeroImage = imageMap[idImg]
+				}
 				p.RelatedsTwo = &rp
+			}
+		}
+
+		// Set heroImage for related posts
+		for j := range p.Relateds {
+			if idImg := getMetaInt(p.Relateds[j].Metadata, "heroImageID"); idImg > 0 {
+				p.Relateds[j].HeroImage = imageMap[idImg]
+			}
+		}
+		for j := range p.RelatedsInInputOrder {
+			if idImg := getMetaInt(p.RelatedsInInputOrder[j].Metadata, "heroImageID"); idImg > 0 {
+				p.RelatedsInInputOrder[j].HeroImage = imageMap[idImg]
 			}
 		}
 	}
@@ -1801,12 +1897,12 @@ func (r *Repo) fetchRelatedPosts(ctx context.Context, postIDs []int) (map[int][]
 		SELECT r."A" as post_id, p.id, p.slug, p.title, p."heroImage"
 		FROM "_Post_relateds" r
 		JOIN "Post" p ON p.id = r."B"
-		WHERE r."A" = ANY($1)
+		WHERE r."A" = ANY($1) AND p.state = 'published'
 		UNION
 		SELECT r."B" as post_id, p.id, p.slug, p.title, p."heroImage"
 		FROM "_Post_relateds" r
 		JOIN "Post" p ON p.id = r."A"
-		WHERE r."B" = ANY($1)
+		WHERE r."B" = ANY($1) AND p.state = 'published'
 	`
 	rows, err := r.db.QueryContext(ctx, query, pqIntArray(postIDs))
 	if err != nil {
@@ -1837,7 +1933,7 @@ func (r *Repo) fetchPostsByIDs(ctx context.Context, ids []int) ([]Post, []int, e
 	if len(ids) == 0 {
 		return result, imageIDs, nil
 	}
-	rows, err := r.db.QueryContext(ctx, `SELECT id, slug, title, "heroImage" FROM "Post" WHERE id = ANY($1)`, pqIntArray(ids))
+	rows, err := r.db.QueryContext(ctx, `SELECT id, slug, title, "heroImage" FROM "Post" WHERE id = ANY($1) AND state = 'published'`, pqIntArray(ids))
 	if err != nil {
 		return result, imageIDs, err
 	}
@@ -1857,6 +1953,70 @@ func (r *Repo) fetchPostsByIDs(ctx context.Context, ids []int) ([]Post, []int, e
 		result = append(result, p)
 	}
 	return result, imageIDs, rows.Err()
+}
+
+func (r *Repo) fetchRelatedsByManualOrder(ctx context.Context, manualOrder []map[string]any) ([]Post, []int, error) {
+	result := []Post{}
+	imageIDs := []int{}
+
+	// If manualOrder is empty, return empty array (matching Lilith behavior)
+	if len(manualOrder) == 0 {
+		return result, imageIDs, nil
+	}
+
+	// Extract ids from manualOrder
+	ids := []int{}
+	for _, item := range manualOrder {
+		if idStr, ok := item["id"].(string); ok {
+			if id, err := strconv.Atoi(idStr); err == nil {
+				ids = append(ids, id)
+			}
+		}
+	}
+
+	if len(ids) == 0 {
+		return result, imageIDs, nil
+	}
+
+	// Query posts by ids
+	rows, err := r.db.QueryContext(ctx, `SELECT id, slug, title, "heroImage" FROM "Post" WHERE id = ANY($1) AND state = 'published'`, pqIntArray(ids))
+	if err != nil {
+		return result, imageIDs, err
+	}
+	defer rows.Close()
+
+	// Create a map of id -> Post for quick lookup
+	postsMap := make(map[int]Post)
+	for rows.Next() {
+		var p Post
+		var dbID int
+		var hero sql.NullInt64
+		if err := rows.Scan(&dbID, &p.Slug, &p.Title, &hero); err != nil {
+			return result, imageIDs, err
+		}
+		p.ID = strconv.Itoa(dbID)
+		if hero.Valid {
+			imageIDs = append(imageIDs, int(hero.Int64))
+			p.Metadata = map[string]any{"heroImageID": int(hero.Int64)}
+		}
+		postsMap[dbID] = p
+	}
+	if err := rows.Err(); err != nil {
+		return result, imageIDs, err
+	}
+
+	// Sort according to manualOrder
+	for _, item := range manualOrder {
+		if idStr, ok := item["id"].(string); ok {
+			if id, err := strconv.Atoi(idStr); err == nil {
+				if p, exists := postsMap[id]; exists {
+					result = append(result, p)
+				}
+			}
+		}
+	}
+
+	return result, imageIDs, nil
 }
 
 func (r *Repo) fetchVideos(ctx context.Context, videoIDs []int) (map[int]*Video, []int, error) {
@@ -2006,6 +2166,105 @@ func (r *Repo) fetchTopicTags(ctx context.Context, topicIDs []int) (map[int][]Ta
 			return result, err
 		}
 		result[tid] = append(result[tid], tg)
+	}
+	return result, rows.Err()
+}
+
+func (r *Repo) fetchExternalSections(ctx context.Context, externalIDs []int) (map[int][]Section, error) {
+	result := map[int][]Section{}
+	if len(externalIDs) == 0 {
+		return result, nil
+	}
+	query := `SELECT es."A" as external_id, s.id, s.name, s.slug, s.state FROM "_External_sections" es JOIN "Section" s ON s.id = es."B" WHERE es."A" = ANY($1)`
+	rows, err := r.db.QueryContext(ctx, query, pqIntArray(externalIDs))
+	if err != nil {
+		return result, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var eid int
+		var s Section
+		if err := rows.Scan(&eid, &s.ID, &s.Name, &s.Slug, &s.State); err != nil {
+			return result, err
+		}
+		result[eid] = append(result[eid], s)
+	}
+	return result, rows.Err()
+}
+
+func (r *Repo) fetchExternalCategories(ctx context.Context, externalIDs []int) (map[int][]Category, error) {
+	result := map[int][]Category{}
+	if len(externalIDs) == 0 {
+		return result, nil
+	}
+	query := `SELECT ce."B" as external_id, c.id, c.name, c.slug, c.state, c."isMemberOnly" FROM "_Category_externals" ce JOIN "Category" c ON c.id = ce."A" WHERE ce."B" = ANY($1)`
+	rows, err := r.db.QueryContext(ctx, query, pqIntArray(externalIDs))
+	if err != nil {
+		return result, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var eid int
+		var c Category
+		if err := rows.Scan(&eid, &c.ID, &c.Name, &c.Slug, &c.State, &c.IsMemberOnly); err != nil {
+			return result, err
+		}
+		result[eid] = append(result[eid], c)
+	}
+	return result, rows.Err()
+}
+
+func (r *Repo) fetchExternalGroups(ctx context.Context, externalIDs []int) (map[int][]Group, error) {
+	result := map[int][]Group{}
+	if len(externalIDs) == 0 {
+		return result, nil
+	}
+	query := `SELECT eg."A" as external_id, g.id, g.keyword FROM "_External_groups" eg JOIN "Group" g ON g.id = eg."B" WHERE eg."A" = ANY($1)`
+	rows, err := r.db.QueryContext(ctx, query, pqIntArray(externalIDs))
+	if err != nil {
+		return result, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var eid int
+		var g Group
+		var dbID int
+		if err := rows.Scan(&eid, &dbID, &g.Keyword); err != nil {
+			return result, err
+		}
+		g.ID = strconv.Itoa(dbID)
+		result[eid] = append(result[eid], g)
+	}
+	return result, rows.Err()
+}
+
+func (r *Repo) fetchExternalRelateds(ctx context.Context, externalIDs []int) (map[int][]Post, error) {
+	result := map[int][]Post{}
+	if len(externalIDs) == 0 {
+		return result, nil
+	}
+	query := `SELECT er."A" as external_id, p.id, p.slug, p.title, p."heroImage" FROM "_External_relateds" er JOIN "Post" p ON p.id = er."B" WHERE er."A" = ANY($1) AND p.state = 'published'`
+	rows, err := r.db.QueryContext(ctx, query, pqIntArray(externalIDs))
+	if err != nil {
+		return result, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var eid int
+		var rp Post
+		var dbID int
+		var heroID sql.NullInt64
+		if err := rows.Scan(&eid, &dbID, &rp.Slug, &rp.Title, &heroID); err != nil {
+			return result, err
+		}
+		rp.ID = strconv.Itoa(dbID)
+		if heroID.Valid {
+			if rp.Metadata == nil {
+				rp.Metadata = map[string]any{}
+			}
+			rp.Metadata["heroImageID"] = int(heroID.Int64)
+		}
+		result[eid] = append(result[eid], rp)
 	}
 	return result, rows.Err()
 }
