@@ -730,8 +730,8 @@ func (r *Repo) QueryPostByUnique(ctx context.Context, where *PostWhereUniqueInpu
 	} else {
 		return nil, nil
 	}
-	// 只回傳 state = 'published' 的文章
-	sb.WriteString(" AND state = 'published'")
+	// 只回傳 state = 'published' 或 'invisible' 的文章
+	sb.WriteString(" AND state IN ('published', 'invisible')")
 	sb.WriteString(" LIMIT 1")
 
 	var (
@@ -955,6 +955,22 @@ func (r *Repo) QueryExternals(ctx context.Context, where *ExternalWhereInput, or
 	categoriesMap, _ := r.fetchExternalCategories(ctx, externalIDs)
 	groupsMap, _ := r.fetchExternalGroups(ctx, externalIDs)
 	relatedsMap, _ := r.fetchExternalRelateds(ctx, externalIDs)
+	relatedImageIDs := []int{}
+	for _, relateds := range relatedsMap {
+		for _, rp := range relateds {
+			if idImg := getMetaInt(rp.Metadata, "heroImageID"); idImg > 0 {
+				relatedImageIDs = append(relatedImageIDs, idImg)
+			}
+		}
+	}
+	relatedImageMap := map[int]*Photo{}
+	if len(relatedImageIDs) > 0 {
+		var err error
+		relatedImageMap, err = r.fetchImages(ctx, relatedImageIDs)
+		if err != nil {
+			return nil, err
+		}
+	}
 	for i := range result {
 		if pid := getMetaInt(result[i].Metadata, "partnerID"); pid > 0 {
 			result[i].Partner = partners[pid]
@@ -965,7 +981,13 @@ func (r *Repo) QueryExternals(ctx context.Context, where *ExternalWhereInput, or
 		result[i].Sections = sectionsMap[idInt]
 		result[i].Categories = categoriesMap[idInt]
 		result[i].Groups = groupsMap[idInt]
-		result[i].Relateds = relatedsMap[idInt]
+		relateds := relatedsMap[idInt]
+		for j := range relateds {
+			if idImg := getMetaInt(relateds[j].Metadata, "heroImageID"); idImg > 0 {
+				relateds[j].HeroImage = relatedImageMap[idImg]
+			}
+		}
+		result[i].Relateds = relateds
 	}
 
 	// 寫入 cache
@@ -1028,7 +1050,7 @@ func (r *Repo) QueryTopics(ctx context.Context, where *TopicWhereInput, orders [
 
 	// 嘗試從 cache 讀取
 	if r.cache != nil && r.cache.Enabled() {
-		cacheKey := GenerateCacheKey("topics", map[string]interface{}{
+		cacheKey := GenerateCacheKey("topics:v2", map[string]interface{}{
 			"where":  where,
 			"orders": orders,
 			"take":   take,
@@ -1227,7 +1249,7 @@ func (r *Repo) QueryTopicsCount(ctx context.Context, where *TopicWhereInput) (in
 
 	// 嘗試從 cache 讀取
 	if r.cache != nil && r.cache.Enabled() {
-		cacheKey := GenerateCacheKey("topicsCount", where)
+		cacheKey := GenerateCacheKey("topicsCount:v2", where)
 		var cachedCount int
 		if found, _ := r.cache.Get(ctx, cacheKey, &cachedCount); found {
 			return cachedCount, nil
@@ -1277,7 +1299,7 @@ func (r *Repo) QueryTopicsCount(ctx context.Context, where *TopicWhereInput) (in
 
 	// 寫入 cache
 	if r.cache != nil && r.cache.Enabled() {
-		cacheKey := GenerateCacheKey("topicsCount", where)
+		cacheKey := GenerateCacheKey("topicsCount:v2", where)
 		_ = r.cache.Set(ctx, cacheKey, count)
 	}
 
@@ -1293,7 +1315,7 @@ func (r *Repo) QueryTopicByUnique(ctx context.Context, where *TopicWhereUniqueIn
 
 	// 嘗試從 cache 讀取
 	if r.cache != nil && r.cache.Enabled() {
-		cacheKey := GenerateCacheKey("topic:unique", where)
+		cacheKey := GenerateCacheKey("topic:unique:v2", where)
 		var cachedTopic *Topic
 		if found, _ := r.cache.Get(ctx, cacheKey, &cachedTopic); found {
 			return cachedTopic, nil
@@ -1451,7 +1473,7 @@ func ensurePostPublished(where *PostWhereInput) *PostWhereInput {
 		where = &PostWhereInput{}
 	}
 	if where.State == nil {
-		where.State = &StringFilter{Equals: ptrString("published")}
+		where.State = &StringFilter{In: []string{"published", "invisible"}}
 	}
 	return where
 }
@@ -1607,41 +1629,93 @@ func (r *Repo) enrichPosts(ctx context.Context, posts []Post) error {
 	// Fetch relatedsInInputOrder based on manualOrderOfRelateds for each post
 	relatedsInInputOrderMap := make(map[int][]Post)
 	relatedsInInputOrderImageIDs := []int{}
+	manualOrders := map[int][]int{}
+	uniqueRelatedIDs := map[int]struct{}{}
 	for _, p := range posts {
-		id, _ := strconv.Atoi(p.ID)
-		relatedsInOrder, imgIDs, err := r.fetchRelatedsByManualOrder(ctx, p.ManualOrderOfRelateds)
-		if err != nil {
-			// Log error but continue
+		postID, _ := strconv.Atoi(p.ID)
+		if len(p.ManualOrderOfRelateds) == 0 {
 			continue
 		}
-		relatedsInInputOrderMap[id] = relatedsInOrder
-		relatedsInInputOrderImageIDs = append(relatedsInInputOrderImageIDs, imgIDs...)
+		ids := []int{}
+		for _, item := range p.ManualOrderOfRelateds {
+			if idStr, ok := item["id"].(string); ok {
+				if id, err := strconv.Atoi(idStr); err == nil {
+					ids = append(ids, id)
+					uniqueRelatedIDs[id] = struct{}{}
+				}
+			}
+		}
+		if len(ids) > 0 {
+			manualOrders[postID] = ids
+		}
 	}
-	imageIDs = append(imageIDs, relatedsInInputOrderImageIDs...)
-
 	relatedOneIDs := []int{}
 	relatedTwoIDs := []int{}
 	for _, p := range posts {
 		if id := getMetaInt(p.Metadata, "relatedsOneID"); id > 0 {
 			relatedOneIDs = append(relatedOneIDs, id)
+			uniqueRelatedIDs[id] = struct{}{}
 		}
 		if id := getMetaInt(p.Metadata, "relatedsTwoID"); id > 0 {
 			relatedTwoIDs = append(relatedTwoIDs, id)
+			uniqueRelatedIDs[id] = struct{}{}
 		}
 	}
-	relatedSinglesIDs := append(relatedOneIDs, relatedTwoIDs...)
 	relatedSinglePosts := map[int]Post{}
-	if len(relatedSinglesIDs) > 0 {
-		sps, imgIDs, err := r.fetchPostsByIDs(ctx, relatedSinglesIDs)
+
+	if len(uniqueRelatedIDs) > 0 {
+		uniqueIDs := make([]int, 0, len(uniqueRelatedIDs))
+		for id := range uniqueRelatedIDs {
+			uniqueIDs = append(uniqueIDs, id)
+		}
+		rows, err := r.db.QueryContext(ctx, `SELECT id, slug, title, "heroImage" FROM "Post" WHERE id = ANY($1) AND state IN ('published', 'invisible')`, pqIntArray(uniqueIDs))
 		if err != nil {
 			return err
 		}
-		for _, sp := range sps {
-			id, _ := strconv.Atoi(sp.ID)
-			relatedSinglePosts[id] = sp
+		postsMap := make(map[int]Post)
+		for rows.Next() {
+			var p Post
+			var dbID int
+			var hero sql.NullInt64
+			if err := rows.Scan(&dbID, &p.Slug, &p.Title, &hero); err != nil {
+				rows.Close()
+				return err
+			}
+			p.ID = strconv.Itoa(dbID)
+			if hero.Valid {
+				relatedsInInputOrderImageIDs = append(relatedsInInputOrderImageIDs, int(hero.Int64))
+				p.Metadata = map[string]any{"heroImageID": int(hero.Int64)}
+			}
+			postsMap[dbID] = p
 		}
-		imageIDs = append(imageIDs, imgIDs...)
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return err
+		}
+		_ = rows.Close()
+
+		for postID, order := range manualOrders {
+			ordered := []Post{}
+			for _, id := range order {
+				if p, ok := postsMap[id]; ok {
+					ordered = append(ordered, p)
+				}
+			}
+			relatedsInInputOrderMap[postID] = ordered
+		}
+
+		for _, id := range relatedOneIDs {
+			if p, ok := postsMap[id]; ok {
+				relatedSinglePosts[id] = p
+			}
+		}
+		for _, id := range relatedTwoIDs {
+			if p, ok := postsMap[id]; ok {
+				relatedSinglePosts[id] = p
+			}
+		}
 	}
+	imageIDs = append(imageIDs, relatedsInInputOrderImageIDs...)
 
 	videoIDs := []int{}
 	topicIDs := []int{}
@@ -1897,12 +1971,12 @@ func (r *Repo) fetchRelatedPosts(ctx context.Context, postIDs []int) (map[int][]
 		SELECT r."A" as post_id, p.id, p.slug, p.title, p."heroImage"
 		FROM "_Post_relateds" r
 		JOIN "Post" p ON p.id = r."B"
-		WHERE r."A" = ANY($1) AND p.state = 'published'
+		WHERE r."A" = ANY($1) AND p.state IN ('published', 'invisible')
 		UNION
 		SELECT r."B" as post_id, p.id, p.slug, p.title, p."heroImage"
 		FROM "_Post_relateds" r
 		JOIN "Post" p ON p.id = r."A"
-		WHERE r."B" = ANY($1) AND p.state = 'published'
+		WHERE r."B" = ANY($1) AND p.state IN ('published', 'invisible')
 	`
 	rows, err := r.db.QueryContext(ctx, query, pqIntArray(postIDs))
 	if err != nil {
@@ -1933,7 +2007,7 @@ func (r *Repo) fetchPostsByIDs(ctx context.Context, ids []int) ([]Post, []int, e
 	if len(ids) == 0 {
 		return result, imageIDs, nil
 	}
-	rows, err := r.db.QueryContext(ctx, `SELECT id, slug, title, "heroImage" FROM "Post" WHERE id = ANY($1) AND state = 'published'`, pqIntArray(ids))
+	rows, err := r.db.QueryContext(ctx, `SELECT id, slug, title, "heroImage" FROM "Post" WHERE id = ANY($1) AND state IN ('published', 'invisible')`, pqIntArray(ids))
 	if err != nil {
 		return result, imageIDs, err
 	}
@@ -1979,7 +2053,7 @@ func (r *Repo) fetchRelatedsByManualOrder(ctx context.Context, manualOrder []map
 	}
 
 	// Query posts by ids
-	rows, err := r.db.QueryContext(ctx, `SELECT id, slug, title, "heroImage" FROM "Post" WHERE id = ANY($1) AND state = 'published'`, pqIntArray(ids))
+rows, err := r.db.QueryContext(ctx, `SELECT id, slug, title, "heroImage" FROM "Post" WHERE id = ANY($1) AND state IN ('published', 'invisible')`, pqIntArray(ids))
 	if err != nil {
 		return result, imageIDs, err
 	}
@@ -2098,8 +2172,8 @@ func (r *Repo) fetchImages(ctx context.Context, ids []int) (map[int]*Photo, erro
 				Height: int(im.height.Int64),
 			},
 		}
-		photo.Resized = r.buildResizedURLs(im.fileID, im.ext)
-		photo.ResizedWebp = r.buildResizedURLs(im.fileID, "webp")
+		photo.Resized = r.buildResizedURLs(im.fileID, im.ext, int(im.width.Int64), int(im.height.Int64))
+		photo.ResizedWebp = r.buildResizedURLs(im.fileID, "webP", int(im.width.Int64), int(im.height.Int64))
 		result[im.id] = &photo
 	}
 	return result, rows.Err()
@@ -2243,7 +2317,7 @@ func (r *Repo) fetchExternalRelateds(ctx context.Context, externalIDs []int) (ma
 	if len(externalIDs) == 0 {
 		return result, nil
 	}
-	query := `SELECT er."A" as external_id, p.id, p.slug, p.title, p."heroImage" FROM "_External_relateds" er JOIN "Post" p ON p.id = er."B" WHERE er."A" = ANY($1) AND p.state = 'published'`
+query := `SELECT er."A" as external_id, p.id, p.slug, p.title, p."heroImage" FROM "_External_relateds" er JOIN "Post" p ON p.id = er."B" WHERE er."A" = ANY($1) AND p.state IN ('published', 'invisible')`
 	rows, err := r.db.QueryContext(ctx, query, pqIntArray(externalIDs))
 	if err != nil {
 		return result, err
@@ -2305,8 +2379,8 @@ func (r *Repo) fetchTopicSlideshowImages(ctx context.Context, topicIDs []int) (m
 				Height: int(im.height.Int64),
 			},
 		}
-		photo.Resized = r.buildResizedURLs(im.fileID, im.ext)
-		photo.ResizedWebp = r.buildResizedURLs(im.fileID, "webp")
+		photo.Resized = r.buildResizedURLs(im.fileID, im.ext, int(im.width.Int64), int(im.height.Int64))
+		photo.ResizedWebp = r.buildResizedURLs(im.fileID, "webP", int(im.width.Int64), int(im.height.Int64))
 		result[tid] = append(result[tid], photo)
 	}
 	return result, imageIDs, rows.Err()
@@ -2320,7 +2394,7 @@ func pqIntArray(ids []int) interface{} {
 	return arr
 }
 
-func (r *Repo) buildResizedURLs(fileID, ext string) Resized {
+func (r *Repo) buildResizedURLs(fileID, ext string, width, height int) Resized {
 	if fileID == "" {
 		return Resized{}
 	}
@@ -2334,12 +2408,23 @@ func (r *Repo) buildResizedURLs(fileID, ext string) Resized {
 		}
 		return fmt.Sprintf("%s/%s-%s.%s", host, fileID, size, extension)
 	}
+	isLandscape := width >= height
 	return Resized{
 		Original: makeURL("", ext),
 		W480:     makeURL("w480", ext),
 		W800:     makeURL("w800", ext),
-		W1200:    makeURL("w1200", ext),
-		W1600:    makeURL("w1600", ext),
-		W2400:    makeURL("w2400", ext),
+		W1200: func() string {
+			if isLandscape {
+				return ""
+			}
+			return makeURL("w1200", ext)
+		}(),
+		W1600: makeURL("w1600", ext),
+		W2400: func() string {
+			if isLandscape {
+				return makeURL("w2400", ext)
+			}
+			return ""
+		}(),
 	}
 }
