@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/mitchellh/mapstructure"
+	"golang.org/x/sync/errgroup"
 )
 
 // Domain models
@@ -1602,28 +1603,61 @@ func (r *Repo) enrichPosts(ctx context.Context, posts []Post) error {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	sectionsMap, err := r.fetchSections(ctx, postIDs)
-	if err != nil {
+	var g errgroup.Group
+	var (
+		sectionsMap          map[int][]Section
+		categoriesMap        map[int][]Category
+		roleMapWriters       map[int][]Contact
+		roleMapPhotographers map[int][]Contact
+		roleMapCamera        map[int][]Contact
+		roleMapDesigners     map[int][]Contact
+		roleMapEngineers     map[int][]Contact
+		roleMapVocals        map[int][]Contact
+		roleMaps             map[string]map[int][]Contact
+		tagsMap              map[int][]Tag
+		tagsAlgoMap          map[int][]Tag
+		relatedsMap          map[int][]Post
+		relatedImageIDs      []int
+	)
+	g.Go(func() error {
+		var err error
+		sectionsMap, err = r.fetchSections(ctx, postIDs)
+		return err
+	})
+	g.Go(func() error {
+		var err error
+		categoriesMap, err = r.fetchCategories(ctx, postIDs)
+		return err
+	})
+	g.Go(func() error {
+		roleMaps, _ = r.fetchContactsByRole(ctx, postIDs)
+		return nil
+	})
+	g.Go(func() error {
+		tagsMap, _ = r.fetchTags(ctx, "_Post_tags", postIDs)
+		return nil
+	})
+	g.Go(func() error {
+		tagsAlgoMap, _ = r.fetchTags(ctx, "_Post_tags_algo", postIDs)
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		relatedsMap, relatedImageIDs, err = r.fetchRelatedPosts(ctx, postIDs)
+		return err
+	})
+	if err := g.Wait(); err != nil {
 		return err
 	}
-	categoriesMap, err := r.fetchCategories(ctx, postIDs)
-	if err != nil {
-		return err
+	if roleMaps == nil {
+		roleMaps = map[string]map[int][]Contact{}
 	}
-	roleMapWriters, _ := r.fetchContacts(ctx, "_Post_writers", postIDs)
-	roleMapPhotographers, _ := r.fetchContacts(ctx, "_Post_photographers", postIDs)
-	roleMapCamera, _ := r.fetchContacts(ctx, "_Post_camera_man", postIDs)
-	roleMapDesigners, _ := r.fetchContacts(ctx, "_Post_designers", postIDs)
-	roleMapEngineers, _ := r.fetchContacts(ctx, "_Post_engineers", postIDs)
-	roleMapVocals, _ := r.fetchContacts(ctx, "_Post_vocals", postIDs)
-
-	tagsMap, _ := r.fetchTags(ctx, "_Post_tags", postIDs)
-	tagsAlgoMap, _ := r.fetchTags(ctx, "_Post_tags_algo", postIDs)
-
-	relatedsMap, relatedImageIDs, err := r.fetchRelatedPosts(ctx, postIDs)
-	if err != nil {
-		return err
-	}
+	roleMapWriters = roleMaps["_Post_writers"]
+	roleMapPhotographers = roleMaps["_Post_photographers"]
+	roleMapCamera = roleMaps["_Post_camera_man"]
+	roleMapDesigners = roleMaps["_Post_designers"]
+	roleMapEngineers = roleMaps["_Post_engineers"]
+	roleMapVocals = roleMaps["_Post_vocals"]
 	imageIDs := append([]int{}, relatedImageIDs...)
 
 	// Fetch relatedsInInputOrder based on manualOrderOfRelateds for each post
@@ -1917,12 +1951,49 @@ func (r *Repo) fetchCategories(ctx context.Context, postIDs []int) (map[int][]Ca
 	return result, rows.Err()
 }
 
-func (r *Repo) fetchContacts(ctx context.Context, table string, postIDs []int) (map[int][]Contact, error) {
-	result := map[int][]Contact{}
+func (r *Repo) fetchContactsByRole(ctx context.Context, postIDs []int) (map[string]map[int][]Contact, error) {
+	result := map[string]map[int][]Contact{
+		"_Post_writers":       {},
+		"_Post_photographers": {},
+		"_Post_camera_man":    {},
+		"_Post_designers":     {},
+		"_Post_engineers":     {},
+		"_Post_vocals":        {},
+	}
 	if len(postIDs) == 0 {
 		return result, nil
 	}
-	query := fmt.Sprintf(`SELECT t."B" as post_id, c.id, c.name FROM "%s" t JOIN "Contact" c ON c.id = t."A" WHERE t."B" = ANY($1)`, table)
+	query := `
+		SELECT t."B" as post_id, c.id, c.name, '_Post_writers' as role
+		FROM "_Post_writers" t
+		JOIN "Contact" c ON c.id = t."A"
+		WHERE t."B" = ANY($1)
+		UNION ALL
+		SELECT t."B" as post_id, c.id, c.name, '_Post_photographers' as role
+		FROM "_Post_photographers" t
+		JOIN "Contact" c ON c.id = t."A"
+		WHERE t."B" = ANY($1)
+		UNION ALL
+		SELECT t."B" as post_id, c.id, c.name, '_Post_camera_man' as role
+		FROM "_Post_camera_man" t
+		JOIN "Contact" c ON c.id = t."A"
+		WHERE t."B" = ANY($1)
+		UNION ALL
+		SELECT t."B" as post_id, c.id, c.name, '_Post_designers' as role
+		FROM "_Post_designers" t
+		JOIN "Contact" c ON c.id = t."A"
+		WHERE t."B" = ANY($1)
+		UNION ALL
+		SELECT t."B" as post_id, c.id, c.name, '_Post_engineers' as role
+		FROM "_Post_engineers" t
+		JOIN "Contact" c ON c.id = t."A"
+		WHERE t."B" = ANY($1)
+		UNION ALL
+		SELECT t."B" as post_id, c.id, c.name, '_Post_vocals' as role
+		FROM "_Post_vocals" t
+		JOIN "Contact" c ON c.id = t."A"
+		WHERE t."B" = ANY($1)
+	`
 	rows, err := r.db.QueryContext(ctx, query, pqIntArray(postIDs))
 	if err != nil {
 		return result, err
@@ -1931,10 +2002,14 @@ func (r *Repo) fetchContacts(ctx context.Context, table string, postIDs []int) (
 	for rows.Next() {
 		var pid int
 		var c Contact
-		if err := rows.Scan(&pid, &c.ID, &c.Name); err != nil {
+		var role string
+		if err := rows.Scan(&pid, &c.ID, &c.Name, &role); err != nil {
 			return result, err
 		}
-		result[pid] = append(result[pid], c)
+		if _, ok := result[role]; !ok {
+			result[role] = map[int][]Contact{}
+		}
+		result[role][pid] = append(result[role][pid], c)
 	}
 	return result, rows.Err()
 }
@@ -2053,7 +2128,7 @@ func (r *Repo) fetchRelatedsByManualOrder(ctx context.Context, manualOrder []map
 	}
 
 	// Query posts by ids
-rows, err := r.db.QueryContext(ctx, `SELECT id, slug, title, "heroImage" FROM "Post" WHERE id = ANY($1) AND state IN ('published', 'invisible')`, pqIntArray(ids))
+	rows, err := r.db.QueryContext(ctx, `SELECT id, slug, title, "heroImage" FROM "Post" WHERE id = ANY($1) AND state IN ('published', 'invisible')`, pqIntArray(ids))
 	if err != nil {
 		return result, imageIDs, err
 	}
@@ -2317,7 +2392,7 @@ func (r *Repo) fetchExternalRelateds(ctx context.Context, externalIDs []int) (ma
 	if len(externalIDs) == 0 {
 		return result, nil
 	}
-query := `SELECT er."A" as external_id, p.id, p.slug, p.title, p."heroImage" FROM "_External_relateds" er JOIN "Post" p ON p.id = er."B" WHERE er."A" = ANY($1) AND p.state IN ('published', 'invisible')`
+	query := `SELECT er."A" as external_id, p.id, p.slug, p.title, p."heroImage" FROM "_External_relateds" er JOIN "Post" p ON p.id = er."B" WHERE er."A" = ANY($1) AND p.state IN ('published', 'invisible')`
 	rows, err := r.db.QueryContext(ctx, query, pqIntArray(externalIDs))
 	if err != nil {
 		return result, err
