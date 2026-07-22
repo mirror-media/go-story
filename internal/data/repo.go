@@ -447,7 +447,7 @@ func (r *Repo) QueryPosts(ctx context.Context, where *PostWhereInput, orders []O
 	}
 
 	sb := strings.Builder{}
-	sb.WriteString(`SELECT id, slug, title, subtitle, state, style, "isMember", "isAdult", "publishedDate", "updatedAt", COALESCE("heroCaption",'') as heroCaption, COALESCE("extend_byline",'') as extend_byline, "heroImage", "heroVideo", brief, content, COALESCE(redirect,'') as redirect, COALESCE(og_title,'') as og_title, COALESCE(og_description,'') as og_description, "hiddenAdvertised", "isAdvertised", "isFeatured", topics, "og_image", "relatedsOne", "relatedsTwo", "manualOrderOfSections", "manualOrderOfCategories", "manualOrderOfWriters", "manualOrderOfRelateds", "manualOrderOfRelatedVideos", "auto_faq", "faqs_algo" FROM "Post" p`)
+	sb.WriteString(`SELECT id, slug, title, subtitle, state, COALESCE(style,'') as style, "isMember", "isAdult", "publishedDate", "updatedAt", COALESCE("heroCaption",'') as heroCaption, COALESCE("extend_byline",'') as extend_byline, "heroImage", "heroVideo", brief, content, COALESCE(redirect,'') as redirect, COALESCE(og_title,'') as og_title, COALESCE(og_description,'') as og_description, "hiddenAdvertised", "isAdvertised", "isFeatured", topics, "og_image", "relatedsOne", "relatedsTwo", "manualOrderOfSections", "manualOrderOfCategories", "manualOrderOfWriters", "manualOrderOfRelateds", "manualOrderOfRelatedVideos", "auto_faq", "faqs_algo" FROM "Post" p`)
 
 	conds := []string{}
 	args := []interface{}{}
@@ -766,7 +766,7 @@ func (r *Repo) QueryPostByUnique(ctx context.Context, where *PostWhereUniqueInpu
 	}
 
 	sb := strings.Builder{}
-	sb.WriteString(`SELECT id, slug, title, subtitle, state, style, "isMember", "isAdult", "publishedDate", "updatedAt", COALESCE("heroCaption",'') as heroCaption, COALESCE("extend_byline",'') as extend_byline, "heroImage", "heroVideo", brief, content, COALESCE(redirect,'') as redirect, COALESCE(og_title,'') as og_title, COALESCE(og_description,'') as og_description, "hiddenAdvertised", "isAdvertised", "isFeatured", topics, "og_image", "relatedsOne", "relatedsTwo", "manualOrderOfSections", "manualOrderOfCategories", "manualOrderOfWriters", "manualOrderOfRelateds", "manualOrderOfRelatedVideos", "auto_faq", "faqs_algo" FROM "Post" p WHERE `)
+	sb.WriteString(`SELECT id, slug, title, subtitle, state, COALESCE(style,'') as style, "isMember", "isAdult", "publishedDate", "updatedAt", COALESCE("heroCaption",'') as heroCaption, COALESCE("extend_byline",'') as extend_byline, "heroImage", "heroVideo", brief, content, COALESCE(redirect,'') as redirect, COALESCE(og_title,'') as og_title, COALESCE(og_description,'') as og_description, "hiddenAdvertised", "isAdvertised", "isFeatured", topics, "og_image", "relatedsOne", "relatedsTwo", "manualOrderOfSections", "manualOrderOfCategories", "manualOrderOfWriters", "manualOrderOfRelateds", "manualOrderOfRelatedVideos", "auto_faq", "faqs_algo" FROM "Post" p WHERE `)
 	args := []interface{}{}
 	argIdx := 1
 	if where.ID != nil {
